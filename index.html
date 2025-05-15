@@ -1,0 +1,2603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRMedic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* Custom scrollbar for pipeline stages */
+        .pipeline-stages-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .pipeline-stages-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .pipeline-stages-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .pipeline-stages-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .draggable-item { 
+            cursor: grab;
+        }
+        .pipeline-stage {
+            min-height: 300px; 
+        }
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        .modal-active {
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        body.modal-active {
+            overflow: hidden; 
+        }
+        .context-menu {
+            position: absolute;
+            z-index: 1000;
+            background-color: white;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            border-radius: 5px;
+            padding: 5px 0;
+            min-width: 180px; 
+        }
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .context-menu-item:hover {
+            background-color: #f0f0f0;
+        }
+        .bg-blue-600 {
+            background-color: rgb(10, 24, 49) !important;
+        }
+        .hover\:bg-blue-700:hover {
+            background-color: rgb(10, 24, 49) !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased">
+
+    <div id="splash-screen" class="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+            <div class="flex justify-center mb-6">
+                <img src="crmed_logomini.jpg" alt="CRMedic Logo" class="h-20">
+            </div>
+            <h2 class="text-2xl font-bold text-center text-gray-700 mb-4">Acceder</h2>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-gray-700">Usuario</label>
+                    <input type="text" id="username" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" placeholder="Ingrese su usuario">
+                </div>
+                <div class="mb-4">
+                    <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+                    <input type="password" id="password" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" placeholder="Ingrese su contraseña">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Acceder</button>
+            </form>
+        </div>
+    </div>
+
+    <header class="bg-blue-600 text-white shadow-md" style="background-color: rgb(10, 24, 49);">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center relative">
+            <div class="flex items-center">
+                <img src="crmed_logomini2.jpg" alt="CRMed Logo" class="h-20 mr-4">
+                <h1 class="text-xs font-bold">CRMed© Costa Rica 2025</h1>
+            </div>
+            <nav class="relative" style="right: 200px;">
+                <button data-tab="dashboard" class="nav-tab px-4 py-2 rounded hover:bg-slate-700 focus:outline-none focus:bg-slate-700">Dashboard</button>
+                <button data-tab="casos" class="nav-tab px-4 py-2 rounded hover:bg-slate-700 focus:outline-none focus:bg-slate-700">Casos</button>
+                <button data-tab="pacientes" class="nav-tab px-4 py-2 rounded hover:bg-slate-700 focus:outline-none focus:bg-slate-700">Pacientes</button>
+                <button data-tab="pacientesPotenciales" class="nav-tab px-4 py-2 rounded hover:bg-slate-700 focus:outline-none focus:bg-slate-700">Pac. Potenciales</button>
+                <button data-tab="citas" class="nav-tab px-4 py-2 rounded hover:bg-slate-700 focus:outline-none focus:bg-slate-700">Citas</button>
+                <button data-tab="actividades" class="nav-tab px-4 py-2 rounded hover:bg-slate-700 focus:outline-none focus:bg-slate-700">Actividades</button>
+                <button data-tab="configuracion" class="nav-tab px-4 py-2 rounded hover:bg-slate-700 focus:outline-none focus:bg-slate-700"><i class="fas fa-cog"></i> Config.</button>
+                <button id="logout-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ml-4" onclick="document.getElementById('splash-screen').style.display = 'flex';">Salir</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-6">
+        <div id="dashboard-view" class="tab-content hidden">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6">Dashboard
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-gray-600">Casos Activos</h3>
+                    <p id="dashboard-active-casos" class="text-3xl font-bold text-blue-600 mt-2">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-gray-600">Citas Hoy</h3>
+                    <p id="dashboard-citas-hoy" class="text-3xl font-bold text-green-600 mt-2">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-gray-600">Pac. Potenciales (Mes)</h3>
+                    <p id="dashboard-pacientes-potenciales-mes" class="text-3xl font-bold text-purple-600 mt-2">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-gray-600">Actividades Pendientes</h3>
+                    <p id="dashboard-overdue-activities" class="text-3xl font-bold text-red-600 mt-2">0</p>
+                </div>
+            </div>
+             <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold text-gray-700 mb-4">Registro de Actividad Reciente</h3>
+                <ul id="recent-activity-feed" class="space-y-3 max-h-96 overflow-y-auto">
+                    <li class="text-gray-600">No hay actividad reciente.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="casos-view" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-gray-700">Flujo de Casos</h2>
+                <button id="add-caso-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    <i class="fas fa-plus mr-2"></i>Añadir Caso
+                </button>
+            </div>
+            <div id="pipeline-stages-container" class="flex space-x-4 overflow-x-auto pb-4">
+                </div>
+        </div>
+
+        <div id="pacientes-view" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-gray-700">Pacientes</h2>
+                <button id="add-paciente-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    <i class="fas fa-user-plus mr-2"></i>Añadir Paciente
+                </button>
+            </div>
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nombre Completo</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Teléfono</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha de Nac.</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pacientes-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="pacientesPotenciales-view" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-gray-700">Pacientes Potenciales</h2>
+                <button id="add-paciente-potencial-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="document.getElementById('paciente-potencial-modal').classList.remove('hidden')">
+                    <i class="fas fa-user-tie mr-2"></i>Añadir Pac. Potencial
+                </button>
+            </div>
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nombre</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Teléfono</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Origen</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pacientes-potenciales-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="citas-view" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-gray-700">Citas</h2>
+                <button id="add-cita-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    <i class="fas fa-calendar-plus mr-2"></i>Agendar Cita
+                </button>
+            </div>
+            <div class="mb-4">
+                <label for="filter-cita-fecha" class="block text-sm font-medium text-gray-700">Filtrar por Fecha:</label>
+                <input type="date" id="filter-cita-fecha" class="mt-1 block w-full md:w-1/3 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+            </div>
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha y Hora</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Paciente</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipo</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="citas-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+
+        <div id="actividades-view" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-gray-700">Actividades</h2>
+                <button id="add-actividad-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    <i class="fas fa-tasks mr-2"></i>Añadir Actividad
+                </button>
+            </div>
+             <div class="mb-4">
+                <label for="filter-actividad-status" class="block text-sm font-medium text-gray-700">Filtrar por Estado:</label>
+                <select id="filter-actividad-status" class="mt-1 block w-full md:w-1/3 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                    <option value="all">Todas</option>
+                    <option value="pending">Pendiente</option>
+                    <option value="completed">Completada</option>
+                    <option value="overdue">Vencida</option>
+                </select>
+            </div>
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipo</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Asunto</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha Límite</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Relacionado Con</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
+                            <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="actividades-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="configuracion-view" class="tab-content hidden">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6">Configuración</h2>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold text-gray-600 mb-4">Etapas de Casos</h3>
+                <div id="pipeline-settings-stages" class="space-y-2 mb-4">
+                    </div>
+                <div class="flex items-center">
+                    <input type="text" id="new-stage-name" placeholder="Nombre de nueva etapa" class="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mr-2">
+                    <button id="add-new-stage-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Añadir Etapa</button>
+                </div>
+                 <p class="mt-2 text-sm text-gray-500">Arrastre para reordenar etapas. Los cambios se aplican inmediatamente.</p>
+            </div>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mt-6">
+                <h3 class="text-xl font-semibold text-gray-600 mb-4">Tipos de Cita</h3>
+                <div id="appointment-types-settings" class="space-y-2 mb-4">
+                    </div>
+                <div class="flex items-center">
+                    <input type="text" id="new-appointment-type-name" placeholder="Nuevo tipo de cita" class="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mr-2">
+                    <button id="add-new-appointment-type-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Añadir Tipo</button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md mt-6">
+                <h3 class="text-xl font-semibold text-gray-600 mb-4">Gestión de Datos</h3>
+                <button id="export-data-btn" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2">
+                    <i class="fas fa-download mr-2"></i>Exportar Datos (JSON)
+                </button>
+                <label for="import-data-input" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline cursor-pointer">
+                    <i class="fas fa-upload mr-2"></i>Importar Datos (JSON)
+                </label>
+                <input type="file" id="import-data-input" class="hidden" accept=".json">
+                 <button id="clear-all-data-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ml-4">
+                    <i class="fas fa-trash-alt mr-2"></i>Borrar Todos los Datos
+                </button>
+                <p class="mt-2 text-sm text-gray-500">Advertencia: Borrar los datos es irreversible.</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md mt-6">
+                <h3 class="text-xl font-semibold text-gray-600 mb-4">Gestión de Usuarios</h3>
+                <div id="user-management-settings" class="space-y-4">
+                    <div class="flex items-center">
+                        <input type="text" id="new-username" placeholder="Nuevo Usuario" class="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mr-2">
+                        <input type="password" id="new-password" placeholder="Nueva Contraseña" class="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mr-2">
+                        <button id="add-new-user-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Añadir Usuario</button>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500">Los usuarios añadidos tendrán acceso al CRM. Asegúrese de usar contraseñas seguras.</p>
+                    <div class="mt-4">
+                        <h4 class="text-lg font-semibold text-gray-600 mb-2">Usuarios Existentes</h4>
+                        <ul id="existing-users-list" class="space-y-2">
+                            <li class="flex justify-between items-center bg-gray-100 p-2 rounded">
+                                <span class="text-gray-700">admin</span>
+                                <button class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline">Eliminar</button>
+                            </li>
+                            <!-- Más usuarios se añadirán dinámicamente aquí -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="caso-modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-lg mx-auto rounded shadow-lg z-50 overflow-y-auto" style="max-height: 90vh;">
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p id="caso-modal-title" class="text-2xl font-bold">Añadir Caso</p>
+                    <button class="modal-close cursor-pointer z-50 text-2xl">&times;</button>
+                </div>
+                <form id="caso-form">
+                    <input type="hidden" id="caso-id">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="caso-nombre">Nombre del Caso</label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="caso-nombre" type="text" placeholder="Ej: Consulta Rutina Juan Pérez" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="caso-etapa">Etapa</label>
+                        <select id="caso-etapa" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="caso-paciente-select">Paciente</label>
+                        <select id="caso-paciente-select" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            <option value="">-- Seleccionar Paciente Existente --</option>
+                            </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="caso-valor">Valor Estimado (₡)</label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="caso-valor" type="number" placeholder="100" min="0">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="caso-fecha-cierre-esperada">Fecha Cierre Esperada</label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="caso-fecha-cierre-esperada" type="date">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="caso-notas">Notas del Caso</label>
+                        <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="caso-notas" placeholder="Detalles adicionales del caso..."></textarea>
+                    </div>
+                    <div class="flex items-center justify-end pt-4">
+                        <button type="button" class="modal-close-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2">Cancelar</button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Guardar Caso</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="paciente-modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded shadow-lg z-50 overflow-y-auto" style="max-height: 90vh;">
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p id="paciente-modal-title" class="text-2xl font-bold">Añadir Paciente</p>
+                    <button class="modal-close cursor-pointer z-50 text-2xl">&times;</button>
+                </div>
+                <form id="paciente-form">
+                    <input type="hidden" id="paciente-id">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 mb-4"> 
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-nombre-pila">Nombre</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-nombre-pila" type="text" placeholder="Juan" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-primer-apellido">Primer Apellido</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-primer-apellido" type="text" placeholder="Pérez" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-segundo-apellido">Segundo Apellido</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-segundo-apellido" type="text" placeholder="García">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-fecha-nacimiento">Fecha de Nacimiento</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-fecha-nacimiento" type="date">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-nacionalidad">Nacionalidad</label>
+                            <select id="paciente-nacionalidad" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <option value="">-- Seleccionar --</option>
+                                <option value="Afganistán">Afganistán</option>
+                                <option value="Albania">Albania</option>
+                                <option value="Alemania">Alemania</option>
+                                <option value="Andorra">Andorra</option>
+                                <option value="Angola">Angola</option>
+                                <option value="Antigua y Barbuda">Antigua y Barbuda</option>
+                                <option value="Arabia Saudita">Arabia Saudita</option>
+                                <option value="Argelia">Argelia</option>
+                                <option value="Argentina">Argentina</option>
+                                <option value="Armenia">Armenia</option>
+                                <option value="Australia">Australia</option>
+                                <option value="Austria">Austria</option>
+                                <option value="Azerbaiyán">Azerbaiyán</option>
+                                <option value="Bahamas">Bahamas</option>
+                                <option value="Bangladés">Bangladés</option>
+                                <option value="Barbados">Barbados</option>
+                                <option value="Baréin">Baréin</option>
+                                <option value="Bélgica">Bélgica</option>
+                                <option value="Belice">Belice</option>
+                                <option value="Benín">Benín</option>
+                                <option value="Bielorrusia">Bielorrusia</option>
+                                <option value="Birmania">Birmania</option>
+                                <option value="Bolivia">Bolivia</option>
+                                <option value="Bosnia y Herzegovina">Bosnia y Herzegovina</option>
+                                <option value="Botsuana">Botsuana</option>
+                                <option value="Brasil">Brasil</option>
+                                <option value="Brunéi">Brunéi</option>
+                                <option value="Bulgaria">Bulgaria</option>
+                                <option value="Burkina Faso">Burkina Faso</option>
+                                <option value="Burundi">Burundi</option>
+                                <option value="Bután">Bután</option>
+                                <option value="Cabo Verde">Cabo Verde</option>
+                                <option value="Camboya">Camboya</option>
+                                <option value="Camerún">Camerún</option>
+                                <option value="Canadá">Canadá</option>
+                                <option value="Catar">Catar</option>
+                                <option value="Chad">Chad</option>
+                                <option value="Chile">Chile</option>
+                                <option value="China">China</option>
+                                <option value="Chipre">Chipre</option>
+                                <option value="Ciudad del Vaticano">Ciudad del Vaticano</option>
+                                <option value="Colombia">Colombia</option>
+                                <option value="Comoras">Comoras</option>
+                                <option value="Corea del Norte">Corea del Norte</option>
+                                <option value="Corea del Sur">Corea del Sur</option>
+                                <option value="Costa de Marfil">Costa de Marfil</option>
+                                <option value="Costa Rica">Costa Rica</option>
+                                <option value="Croacia">Croacia</option>
+                                <option value="Cuba">Cuba</option>
+                                <option value="Dinamarca">Dinamarca</option>
+                                <option value="Dominica">Dominica</option>
+                                <option value="Ecuador">Ecuador</option>
+                                <option value="Egipto">Egipto</option>
+                                <option value="El Salvador">El Salvador</option>
+                                <option value="Emiratos Árabes Unidos">Emiratos Árabes Unidos</option>
+                                <option value="Eritrea">Eritrea</option>
+                                <option value="Eslovaquia">Eslovaquia</option>
+                                <option value="Eslovenia">Eslovenia</option>
+                                <option value="España">España</option>
+                                <option value="Estados Unidos">Estados Unidos</option>
+                                <option value="Estonia">Estonia</option>
+                                <option value="Etiopía">Etiopía</option>
+                                <option value="Filipinas">Filipinas</option>
+                                <option value="Finlandia">Finlandia</option>
+                                <option value="Fiyi">Fiyi</option>
+                                <option value="Francia">Francia</option>
+                                <option value="Gabón">Gabón</option>
+                                <option value="Gambia">Gambia</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Ghana">Ghana</option>
+                                <option value="Granada">Granada</option>
+                                <option value="Grecia">Grecia</option>
+                                <option value="Guatemala">Guatemala</option>
+                                <option value="Guyana">Guyana</option>
+                                <option value="Guinea">Guinea</option>
+                                <option value="Guinea-Bisáu">Guinea-Bisáu</option>
+                                <option value="Guinea Ecuatorial">Guinea Ecuatorial</option>
+                                <option value="Haití">Haití</option>
+                                <option value="Honduras">Honduras</option>
+                                <option value="Hungría">Hungría</option>
+                                <option value="India">India</option>
+                                <option value="Indonesia">Indonesia</option>
+                                <option value="Irak">Irak</option>
+                                <option value="Irán">Irán</option>
+                                <option value="Irlanda">Irlanda</option>
+                                <option value="Islandia">Islandia</option>
+                                <option value="Islas Marshall">Islas Marshall</option>
+                                <option value="Islas Salomón">Islas Salomón</option>
+                                <option value="Israel">Israel</option>
+                                <option value="Italia">Italia</option>
+                                <option value="Jamaica">Jamaica</option>
+                                <option value="Japón">Japón</option>
+                                <option value="Jordania">Jordania</option>
+                                <option value="Kazajistán">Kazajistán</option>
+                                <option value="Kenia">Kenia</option>
+                                <option value="Kirguistán">Kirguistán</option>
+                                <option value="Kiribati">Kiribati</option>
+                                <option value="Kuwait">Kuwait</option>
+                                <option value="Laos">Laos</option>
+                                <option value="Lesoto">Lesoto</option>
+                                <option value="Letonia">Letonia</option>
+                                <option value="Líbano">Líbano</option>
+                                <option value="Liberia">Liberia</option>
+                                <option value="Libia">Libia</option>
+                                <option value="Liechtenstein">Liechtenstein</option>
+                                <option value="Lituania">Lituania</option>
+                                <option value="Luxemburgo">Luxemburgo</option>
+                                <option value="Madagascar">Madagascar</option>
+                                <option value="Malasia">Malasia</option>
+                                <option value="Malaui">Malaui</option>
+                                <option value="Maldivas">Maldivas</option>
+                                <option value="Malí">Malí</option>
+                                <option value="Malta">Malta</option>
+                                <option value="Marruecos">Marruecos</option>
+                                <option value="Mauricio">Mauricio</option>
+                                <option value="Mauritania">Mauritania</option>
+                                <option value="México">México</option>
+                                <option value="Micronesia">Micronesia</option>
+                                <option value="Moldavia">Moldavia</option>
+                                <option value="Mónaco">Mónaco</option>
+                                <option value="Mongolia">Mongolia</option>
+                                <option value="Montenegro">Montenegro</option>
+                                <option value="Mozambique">Mozambique</option>
+                                <option value="Namibia">Namibia</option>
+                                <option value="Nauru">Nauru</option>
+                                <option value="Nepal">Nepal</option>
+                                <option value="Nicaragua">Nicaragua</option>
+                                <option value="Níger">Níger</option>
+                                <option value="Nigeria">Nigeria</option>
+                                <option value="Noruega">Noruega</option>
+                                <option value="Nueva Zelanda">Nueva Zelanda</option>
+                                <option value="Omán">Omán</option>
+                                <option value="Países Bajos">Países Bajos</option>
+                                <option value="Pakistán">Pakistán</option>
+                                <option value="Palaos">Palaos</option>
+                                <option value="Panamá">Panamá</option>
+                                <option value="Papúa Nueva Guinea">Papúa Nueva Guinea</option>
+                                <option value="Paraguay">Paraguay</option>
+                                <option value="Perú">Perú</option>
+                                <option value="Polonia">Polonia</option>
+                                <option value="Portugal">Portugal</option>
+                                <option value="Reino Unido">Reino Unido</option>
+                                <option value="República Centroafricana">República Centroafricana</option>
+                                <option value="República Checa">República Checa</option>
+                                <option value="República del Congo">República del Congo</option>
+                                <option value="República Democrática del Congo">República Democrática del Congo</option>
+                                <option value="República Dominicana">República Dominicana</option>
+                                <option value="Ruanda">Ruanda</option>
+                                <option value="Rumanía">Rumanía</option>
+                                <option value="Rusia">Rusia</option>
+                                <option value="Samoa">Samoa</option>
+                                <option value="San Cristóbal y Nieves">San Cristóbal y Nieves</option>
+                                <option value="San Marino">San Marino</option>
+                                <option value="San Vicente y las Granadinas">San Vicente y las Granadinas</option>
+                                <option value="Santa Lucía">Santa Lucía</option>
+                                <option value="Santo Tomé y Príncipe">Santo Tomé y Príncipe</option>
+                                <option value="Senegal">Senegal</option>
+                                <option value="Serbia">Serbia</option>
+                                <option value="Seychelles">Seychelles</option>
+                                <option value="Sierra Leona">Sierra Leona</option>
+                                <option value="Singapur">Singapur</option>
+                                <option value="Siria">Siria</option>
+                                <option value="Somalia">Somalia</option>
+                                <option value="Sri Lanka">Sri Lanka</option>
+                                <option value="Suazilandia">Suazilandia</option>
+                                <option value="Sudáfrica">Sudáfrica</option>
+                                <option value="Sudán">Sudán</option>
+                                <option value="Sudán del Sur">Sudán del Sur</option>
+                                <option value="Suecia">Suecia</option>
+                                <option value="Suiza">Suiza</option>
+                                <option value="Surinam">Surinam</option>
+                                <option value="Tailandia">Tailandia</option>
+                                <option value="Tanzania">Tanzania</option>
+                                <option value="Tayikistán">Tayikistán</option>
+                                <option value="Timor Oriental">Timor Oriental</option>
+                                <option value="Togo">Togo</option>
+                                <option value="Tonga">Tonga</option>
+                                <option value="Trinidad y Tobago">Trinidad y Tobago</option>
+                                <option value="Túnez">Túnez</option>
+                                <option value="Turkmenistán">Turkmenistán</option>
+                                <option value="Turquía">Turquía</option>
+                                <option value="Tuvalu">Tuvalu</option>
+                                <option value="Ucrania">Ucrania</option>
+                                <option value="Uganda">Uganda</option>
+                                <option value="Uruguay">Uruguay</option>
+                                <option value="Uzbekistán">Uzbekistán</option>
+                                <option value="Vanuatu">Vanuatu</option>
+                                <option value="Venezuela">Venezuela</option>
+                                <option value="Vietnam">Vietnam</option>
+                                <option value="Yemen">Yemen</option>
+                                <option value="Yibuti">Yibuti</option>
+                                <option value="Zambia">Zambia</option>
+                                <option value="Zimbabue">Zimbabue</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-cedula-pasaporte">Cédula o Pasaporte</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-cedula-pasaporte" type="text" placeholder="Número de Identificación">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-email">Email</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-email" type="email" placeholder="juan.perez@example.com">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-telefono-numero">Teléfono</label>
+                            <div class="flex">
+                                <select id="paciente-telefono-prefijo" class="shadow border rounded-l w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-50">
+                                    <option value="+506">+506 (CR)</option>
+                                    <option value="+34">+34 (ES)</option>
+                                    <option value="+52">+52 (MX)</option>
+                                    <option value="+57">+57 (CO)</option>
+                                    <option value="+1">+1 (US)</option>
+                                    <option value="+44">+44 (UK)</option>
+                                    <option value="+49">+49 (DE)</option>
+                                    <option value="+54">+54 (AR)</option>
+                                    <option value="+51">+51 (PE)</option>
+                                    <option value="+58">+58 (VE)</option>
+                                    <option value="+56">+56 (CL)</option>
+                                </select>
+                                <input class="shadow appearance-none border rounded-r w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-telefono-numero" type="tel" placeholder="8888-8888">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-peso">Peso</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-peso" type="text" placeholder="Ej: 70 kg">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-estatura">Estatura</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-estatura" type="text" placeholder="Ej: 175 cm">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-aseguradora">Aseguradora</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-aseguradora" type="text" placeholder="Nombre de la aseguradora">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-poliza">N° Póliza</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-poliza" type="text" placeholder="Número de la póliza">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-medicamentos-actuales">Medicamentos Actuales</label>
+                        <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-medicamentos-actuales" placeholder="Listar medicamentos, dosis y frecuencia..."></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-alergias">Alergias</label>
+                        <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-alergias" placeholder="Polen, Penicilina..."></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-condiciones-cronicas">Condiciones Crónicas</label>
+                        <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-condiciones-cronicas" placeholder="Hipertensión, Diabetes..."></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-notas-medicas">Notas Médicas Adicionales</label>
+                        <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="paciente-notas-medicas" placeholder="Otros detalles relevantes..."></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="paciente-estudios-laboratorio">Estudios de Laboratorio</label>
+                        <div class="border-dashed border-2 border-gray-300 rounded-lg p-4 text-center">
+                            <p class="text-gray-600 mb-2">Arrastra los archivos aquí o</p>
+                            <input id="paciente-estudios-laboratorio" type="file" accept=".pdf,.jpg,.png" multiple class="hidden">
+                            <button type="button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="document.getElementById('paciente-estudios-laboratorio').click()">Cargar</button>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Contacto de Emergencia</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="emergencia-nombre">Nombre</label>
+                                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="emergencia-nombre" type="text" placeholder="Nombre del contacto" required>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="emergencia-apellido">Apellido</label>
+                                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="emergencia-apellido" type="text" placeholder="Apellido del contacto" required>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 mt-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="emergencia-telefono">Teléfono</label>
+                                <div class="flex">
+                                    <select id="emergencia-telefono-prefijo" class="shadow border rounded-l w-auto py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-50">
+                                        <option value="+506">+506 (CR)</option>
+                                        <option value="+34">+34 (ES)</option>
+                                        <option value="+52">+52 (MX)</option>
+                                        <option value="+57">+57 (CO)</option>
+                                        <option value="+1">+1 (US)</option>
+                                        <option value="+44">+44 (UK)</option>
+                                        <option value="+49">+49 (DE)</option>
+                                        <option value="+54">+54 (AR)</option>
+                                        <option value="+51">+51 (PE)</option>
+                                        <option value="+58">+58 (VE)</option>
+                                        <option value="+56">+56 (CL)</option>
+                                    </select>
+                                    <input class="shadow appearance-none border rounded-r w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="emergencia-telefono" type="tel" placeholder="8888-8888" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="emergencia-email">Correo Electrónico</label>
+                                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="emergencia-email" type="email" placeholder="Correo del contacto" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="fecha-cita-anterior">Fecha de Cita Anterior</label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="fecha-cita-anterior" type="date">
+                    </div>
+                    <div class="mb-4">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Historial de Citas</h3>
+                        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                            <table class="min-w-full leading-normal">
+                                <thead>
+                                    <tr>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha</th>
+                                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end pt-4">
+                        <button type="button" class="modal-close-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2">Cancelar</button>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Guardar Paciente</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="paciente-potencial-modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded shadow-lg z-50 overflow-y-auto" style="max-height: 90vh;">
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p id="paciente-potencial-modal-title" class="text-2xl font-bold">Añadir Paciente Potencial</p>
+                    <button class="modal-close cursor-pointer z-50 text-2xl" onclick="document.getElementById('paciente-potencial-modal').classList.add('hidden')">&times;</button>
+                </div>
+                <form id="paciente-potencial-form">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4 mb-4"> 
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="potencial-nombre-pila">Nombre</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="potencial-nombre-pila" type="text" placeholder="Juan" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="potencial-primer-apellido">Primer Apellido</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="potencial-primer-apellido" type="text" placeholder="Pérez" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="potencial-segundo-apellido">Segundo Apellido</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="potencial-segundo-apellido" type="text" placeholder="García">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="potencial-fecha-nacimiento">Fecha de Nacimiento</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="potencial-fecha-nacimiento" type="date">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="potencial-nacionalidad">Nacionalidad</label>
+                            <select id="potencial-nacionalidad" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <option value="">-- Seleccionar --</option>
+                                <option value="Afganistán">Afganistán</option>
+                                <option value="Albania">Albania</option>
+                                <option value="Alemania">Alemania</option>
+                                <option value="Andorra">Andorra</option>
+                                <option value="Angola">Angola</option>
+                                <option value="Antigua y Barbuda">Antigua y Barbuda</option>
+                                <option value="Arabia Saudita">Arabia Saudita</option>
+                                <option value="Argelia">Argelia</option>
+                                <option value="Argentina">Argentina</option>
+                                <option value="Armenia">Armenia</option>
+                                <option value="Australia">Australia</option>
+                                <option value="Austria">Austria</option>
+                                <option value="Azerbaiyán">Azerbaiyán</option>
+                                <option value="Bahamas">Bahamas</option>
+                                <option value="Bangladés">Bangladés</option>
+                                <option value="Barbados">Barbados</option>
+                                <option value="Baréin">Baréin</option>
+                                <option value="Bélgica">Bélgica</option>
+                                <option value="Belice">Belice</option>
+                                <option value="Benín">Benín</option>
+                                <option value="Bielorrusia">Bielorrusia</option>
+                                <option value="Birmania">Birmania</option>
+                                <option value="Bolivia">Bolivia</option>
+                                <option value="Bosnia y Herzegovina">Bosnia y Herzegovina</option>
+                                <option value="Botsuana">Botsuana</option>
+                                <option value="Brasil">Brasil</option>
+                                <option value="Brunéi">Brunéi</option>
+                                <option value="Bulgaria">Bulgaria</option>
+                                <option value="Burkina Faso">Burkina Faso</option>
+                                <option value="Burundi">Burundi</option>
+                                <option value="Bután">Bután</option>
+                                <option value="Cabo Verde">Cabo Verde</option>
+                                <option value="Camboya">Camboya</option>
+                                <option value="Camerún">Camerún</option>
+                                <option value="Canadá">Canadá</option>
+                                <option value="Catar">Catar</option>
+                                <option value="Chad">Chad</option>
+                                <option value="Chile">Chile</option>
+                                <option value="China">China</option>
+                                <option value="Chipre">Chipre</option>
+                                <option value="Ciudad del Vaticano">Ciudad del Vaticano</option>
+                                <option value="Colombia">Colombia</option>
+                                <option value="Comoras">Comoras</option>
+                                <option value="Corea del Norte">Corea del Norte</option>
+                                <option value="Corea del Sur">Corea del Sur</option>
+                                <option value="Costa de Marfil">Costa de Marfil</option>
+                                <option value="Costa Rica">Costa Rica</option>
+                                <option value="Croacia">Croacia</option>
+                                <option value="Cuba">Cuba</option>
+                                <option value="Dinamarca">Dinamarca</option>
+                                <option value="Dominica">Dominica</option>
+                                <option value="Ecuador">Ecuador</option>
+                                <option value="Egipto">Egipto</option>
+                                <option value="El Salvador">El Salvador</option>
+                                <option value="Emiratos Árabes Unidos">Emiratos Árabes Unidos</option>
+                                <option value="Eritrea">Eritrea</option>
+                                <option value="Eslovaquia">Eslovaquia</option>
+                                <option value="Eslovenia">Eslovenia</option>
+                                <option value="España">España</option>
+                                <option value="Estados Unidos">Estados Unidos</option>
+                                <option value="Estonia">Estonia</option>
+                                <option value="Etiopía">Etiopía</option>
+                                <option value="Filipinas">Filipinas</option>
+                                <option value="Finlandia">Finlandia</option>
+                                <option value="Fiyi">Fiyi</option>
+                                <option value="Francia">Francia</option>
+                                <option value="Gabón">Gabón</option>
+                                <option value="Gambia">Gambia</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Ghana">Ghana</option>
+                                <option value="Granada">Granada</option>
+                                <option value="Grecia">Grecia</option>
+                                <option value="Guatemala">Guatemala</option>
+                                <option value="Guyana">Guyana</option>
+                                <option value="Guinea">Guinea</option>
+                                <option value="Guinea-Bisáu">Guinea-Bisáu</option>
+                                <option value="Guinea Ecuatorial">Guinea Ecuatorial</option>
+                                <option value="Haití">Haití</option>
+                                <option value="Honduras">Honduras</option>
+                                <option value="Hungría">Hungría</option>
+                                <option value="India">India</option>
+                                <option value="Indonesia">Indonesia</option>
+                                <option value="Irak">Irak</option>
+                                <option value="Irán">Irán</option>
+                                <option value="Irlanda">Irlanda</option>
+                                <option value="Islandia">Islandia</option>
+                                <option value="Islas Marshall">Islas Marshall</option>
+                                <option value="Islas Salomón">Islas Salomón</option>
+                                <option value="Israel">Israel</option>
+                                <option value="Italia">Italia</option>
+                                <option value="Jamaica">Jamaica</option>
+                                <option value="Japón">Japón</option>
+                                <option value="Jordania">Jordania</option>
+                                <option value="Kazajistán">Kazajistán</option>
+                                <option value="Kenia">Kenia</option>
+                                <option value="Kirguistán">Kirguistán</option>
+                                <option value="Kiribati">Kiribati</option>
+                                <option value="Kuwait">Kuwait</option>
+                                <option value="Laos">Laos</option>
+                                <option value="Lesoto">Lesoto</option>
+                                <option value="Letonia">Letonia</option>
+                                <option value="Líbano">Líbano</option>
+                                <option value="Liberia">Liberia</option>
+                                <option value="Libia">Libia</option>
+                                <option value="Liechtenstein">Liechtenstein</option>
+                                <option value="Lituania">Lituania</option>
+                                <option value="Luxemburgo">Luxemburgo</option>
+                                <option value="Madagascar">Madagascar</option>
+                                <option value="Malasia">Malasia</option>
+                                <option value="Malaui">Malaui</option>
+                                <option value="Maldivas">Maldivas</option>
+                                <option value="Malí">Malí</option>
+                                <option value="Malta">Malta</option>
+                                <option value="Marruecos">Marruecos</option>
+                                <option value="Mauricio">Mauricio</option>
+                                <option value="Mauritania">Mauritania</option>
+                                <option value="México">México</option>
+                                <option value="Micronesia">Micronesia</option>
+                                <option value="Moldavia">Moldavia</option>
+                                <option value="Mónaco">Mónaco</option>
+                                <option value="Mongolia">Mongolia</option>
+                                <option value="Montenegro">Montenegro</option>
+                                <option value="Mozambique">Mozambique</option>
+                                <option value="Namibia">Namibia</option>
+                                <option value="Nauru">Nauru</option>
+                                <option value="Nepal">Nepal</option>
+                                <option value="Nicaragua">Nicaragua</option>
+                                <option value="Níger">Níger</option>
+                                <option value="Nigeria">Nigeria</option>
+                                <option value="Noruega">Noruega</option>
+                                <option value="Nueva Zelanda">Nueva Zelanda</option>
+                                <option value="Omán">Omán</option>
+                                <option value="Países Bajos">Países Bajos</option>
+                                <option value="Pakistán">Pakistán</option>
+                                <option value="Palaos">Palaos</option>
+                                <option value="Panamá">Panamá</option>
+                                <option value="Papúa Nueva Guinea">Papúa Nueva Guinea</option>
+                                <option value="Paraguay">Paraguay</option>
+                                <option value="Perú">Perú</option>
+                                <option value="Polonia">Polonia</option>
+                                <option value="Portugal">Portugal</option>
+                                <option value="Reino Unido">Reino Unido</option>
+                                <option value="República Centroafricana">República Centroafricana</option>
+                                <option value="República Checa">República Checa</option>
+                                <option value="República del Congo">República del Congo</option>
+                                <option value="República Democrática del Congo">República Democrática del Congo</option>
+                                <option value="República Dominicana">República Dominicana</option>
+                                <option value="Ruanda">Ruanda</option>
+                                <option value="Rumanía">Rumanía</option>
+                                <option value="Rusia">Rusia</option>
+                                <option value="Samoa">Samoa</option>
+                                <option value="San Cristóbal y Nieves">San Cristóbal y Nieves</option>
+                                <option value="San Marino">San Marino</option>
+                                <option value="San Vicente y las Granadinas">San Vicente y las Granadinas</option>
+                                <option value="Santa Lucía">Santa Lucía</option>
+                                <option value="Santo Tomé y Príncipe">Santo Tomé y Príncipe</option>
+                                <option value="Senegal">Senegal</option>
+                                <option value="Serbia">Serbia</option>
+                                <option value="Seychelles">Seychelles</option>
+                                <option value="Sierra Leona">Sierra Leona</option>
+                                <option value="Singapur">Singapur</option>
+                                <option value="Siria">Siria</option>
+                                <option value="Somalia">Somalia</option>
+                                <option value="Sri Lanka">Sri Lanka</option>
+                                <option value="Suazilandia">Suazilandia</option>
+                                <option value="Sudáfrica">Sudáfrica</option>
+                                <option value="Sudán">Sudán</option>
+                                <option value="Sudán del Sur">Sudán del Sur</option>
+                                <option value="Suecia">Suecia</option>
+                                <option value="Suiza">Suiza</option>
+                                <option value="Surinam">Surinam</option>
+                                <option value="Tailandia">Tailandia</option>
+                                <option value="Tanzania">Tanzania</option>
+                                <option value="Tayikistán">Tayikistán</option>
+                                <option value="Timor Oriental">Timor Oriental</option>
+                                <option value="Togo">Togo</option>
+                                <option value="Tonga">Tonga</option>
+                                <option value="Trinidad y Tobago">Trinidad y Tobago</option>
+                                <option value="Túnez">Túnez</option>
+                                <option value="Turkmenistán">Turkmenistán</option>
+                                <option value="Turquía">Turquía</option>
+                                <option value="Tuvalu">Tuvalu</option>
+                                <option value="Ucrania">Ucrania</option>
+                                <option value="Uganda">Uganda</option>
+                                <option value="Uruguay">Uruguay</option>
+                                <option value="Uzbekistán">Uzbekistán</option>
+                                <option value="Vanuatu">Vanuatu</option>
+                                <option value="Venezuela">Venezuela</option>
+                                <option value="Vietnam">Vietnam</option>
+                                <option value="Yemen">Yemen</option>
+                                <option value="Yibuti">Yibuti</option>
+                                <option value="Zambia">Zambia</option>
+                                <option value="Zimbabue">Zimbabue</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="potencial-telefono">Teléfono</label>
+                            <div class="flex">
+                                <select id="potencial-prefijo-telefono" class="shadow border rounded-l w-1/4 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                    <option value="+1">+1</option>
+                                    <option value="+52">+52</option>
+                                    <option value="+506">+506</option>
+                                    <option value="+34">+34</option>
+                                    <option value="+57">+57</option>
+                                    <option value="+44">+44</option>
+                                    <option value="+49">+49</option>
+                                    <option value="+54">+54</option>
+                                    <option value="+51">+51</option>
+                                    <option value="+58">+58</option>
+                                    <option value="+56">+56</option>
+                                </select>
+                                <input class="shadow appearance-none border rounded-r w-3/4 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="potencial-telefono" type="tel" placeholder="1234567890" required>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="potencial-email">Correo Electrónico</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="potencial-email" type="email" placeholder="correo@ejemplo.com" required>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="potencial-razon-consulta">Razón de la Consulta</label>
+                        <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="potencial-razon-consulta" placeholder="Describa brevemente la razón de la consulta" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="potencial-referido-por">Referido Por</label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="potencial-referido-por" type="text" placeholder="Nombre de la persona o institución que refirió">
+                    </div>
+                    <div class="flex items-center justify-end pt-4">
+                        <button type="button" class="modal-close-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2" onclick="document.getElementById('paciente-potencial-modal').classList.add('hidden')">Cancelar</button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div id="cita-modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-lg mx-auto rounded shadow-lg z-50 overflow-y-auto" style="max-height: 90vh;">
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p id="cita-modal-title" class="text-2xl font-bold">Agendar Cita</p>
+                    <button class="modal-close cursor-pointer z-50 text-2xl">&times;</button>
+                </div>
+                <form id="cita-form">
+                    <input type="hidden" id="cita-id">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="cita-paciente-select">Paciente</label>
+                        <select id="cita-paciente-select" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            <option value="">-- Seleccionar Paciente --</option>
+                            </select>
+                    </div>
+                    <div class="mb-4">
+                                    </select>
+                                    <input class="shadow appearance-none border rounded-r w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="emergencia-telefono" type="tel" placeholder="8888-8888" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="emergencia-email">Correo Electrónico</label>
+                                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="emergencia-email" type="email" placeholder="Correo del contacto" required>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div id="cita-modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-lg mx-auto rounded shadow-lg z-50 overflow-y-auto" style="max-height: 90vh;">
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p id="cita-modal-title" class="text-2xl font-bold">Agendar Cita</p>
+                    <button class="modal-close cursor-pointer z-50 text-2xl">&times;</button>
+                </div>
+                <form id="cita-form">
+                    <input type="hidden" id="cita-id">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="cita-paciente-select">Paciente</label>
+                        <select id="cita-paciente-select" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            <option value="">-- Seleccionar Paciente --</option>
+                            </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="cita-fecha-hora">Fecha y Hora</label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="cita-fecha-hora" type="datetime-local" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="cita-tipo">Tipo de Cita</label>
+                        <select id="cita-tipo" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="cita-estado">Estado</label>
+                        <select id="cita-estado" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            <option value="Programada">Programada</option>
+                            <option value="Confirmada">Confirmada</option>
+                            <option value="Completada">Completada</option>
+                            <option value="Cancelada">Cancelada</option>
+                            <option value="No Asistió">No Asistió</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="cita-notas">Notas de la Cita</label>
+                        <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="cita-notas" placeholder="Motivo, observaciones..."></textarea>
+                    </div>
+                    <div class="flex items-center justify-end pt-4">
+                        <button type="button" class="modal-close-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2">Cancelar</button>
+                        <button type="submit" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Guardar Cita</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="actividad-modal" class="modal fixed w-full h-full top-0 left-0 flex items-center justify-center hidden z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto" style="max-height: 90vh;">
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p id="actividad-modal-title" class="text-2xl font-bold">Añadir Actividad</p>
+                    <button class="modal-close cursor-pointer z-50 text-2xl">&times;</button>
+                </div>
+                <form id="actividad-form">
+                    <input type="hidden" id="actividad-id">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="actividad-tipo">Tipo</label>
+                        <select id="actividad-tipo" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            <option value="Llamada">Llamada</option>
+                            <option value="Email">Email</option>
+                            <option value="Reunión">Reunión</option>
+                            <option value="Tarea">Tarea</option>
+                            <option value="Recordatorio">Recordatorio</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="actividad-asunto">Asunto</label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="actividad-asunto" type="text" placeholder="Llamada de seguimiento con..." required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="actividad-fecha-limite">Fecha y Hora Límite</label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="actividad-fecha-limite" type="datetime-local" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="actividad-relacionado-con">Relacionado Con</label>
+                        <select id="actividad-relacionado-con" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            <option value="">-- Ninguno --</option>
+                            <optgroup label="Casos" id="actividad-relacionado-casos-group">
+                                </optgroup>
+                            <optgroup label="Pacientes" id="actividad-relacionado-pacientes-group">
+                                </optgroup>
+                             <optgroup label="Pac. Potenciales" id="actividad-relacionado-pacientesPotenciales-group">
+                                </optgroup>
+                             <optgroup label="Citas" id="actividad-relacionado-citas-group">
+                                </optgroup>
+                        </select>
+                    </div>
+                     <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="actividad-notas">Notas</label>
+                        <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="actividad-notas" placeholder="Detalles sobre la actividad..."></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" id="actividad-completada" class="form-checkbox h-5 w-5 text-yellow-600">
+                            <span class="ml-2 text-gray-700">Marcar como completada</span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-end pt-4">
+                        <button type="button" class="modal-close-btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2">Cancelar</button>
+                        <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Guardar Actividad</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="context-menu" class="context-menu hidden">
+        </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DATA MANAGEMENT ---
+            let casos = []; 
+            let pacientes = []; 
+            let pacientesPotenciales = []; 
+            let citas = []; 
+            let actividades = []; 
+            let etapasCasos = ['Consulta Inicial', 'Diagnóstico', 'Plan de Tratamiento', 'En Progreso', 'Seguimiento', 'Completado', 'Cerrado/Perdido']; 
+            let tiposCitas = ['Consulta General', 'Revisión', 'Procedimiento Menor', 'Vacunación', 'Urgencia']; 
+            let recentActivityLog = [];
+
+            const MAX_RECENT_ACTIVITIES = 15; 
+
+            function generateId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2);
+            }
+
+            function saveData() {
+                localStorage.setItem('pipelineCrmCasos', JSON.stringify(casos));
+                localStorage.setItem('pipelineCrmPacientes', JSON.stringify(pacientes));
+                localStorage.setItem('pipelineCrmPacientesPotenciales', JSON.stringify(pacientesPotenciales));
+                localStorage.setItem('pipelineCrmCitas', JSON.stringify(citas));
+                localStorage.setItem('pipelineCrmActividades', JSON.stringify(actividades));
+                localStorage.setItem('pipelineCrmEtapasCasos', JSON.stringify(etapasCasos));
+                localStorage.setItem('pipelineCrmTiposCitas', JSON.stringify(tiposCitas));
+                localStorage.setItem('pipelineCrmRecentActivityLog', JSON.stringify(recentActivityLog));
+            }
+
+            function loadData() {
+                casos = JSON.parse(localStorage.getItem('pipelineCrmCasos')) || [];
+                pacientes = JSON.parse(localStorage.getItem('pipelineCrmPacientes')) || [];
+                pacientesPotenciales = JSON.parse(localStorage.getItem('pipelineCrmPacientesPotenciales')) || [];
+                citas = JSON.parse(localStorage.getItem('pipelineCrmCitas')) || [];
+                actividades = JSON.parse(localStorage.getItem('pipelineCrmActividades')) || [];
+                
+                const storedEtapas = JSON.parse(localStorage.getItem('pipelineCrmEtapasCasos'));
+                if (storedEtapas && storedEtapas.length > 0) {
+                    etapasCasos = storedEtapas;
+                }
+                const storedTiposCitas = JSON.parse(localStorage.getItem('pipelineCrmTiposCitas'));
+                 if (storedTiposCitas && storedTiposCitas.length > 0) {
+                    tiposCitas = storedTiposCitas;
+                }
+
+                recentActivityLog = JSON.parse(localStorage.getItem('pipelineCrmRecentActivityLog')) || [];
+            }
+            
+            function addRecentActivity(message) {
+                recentActivityLog.unshift({ message, timestamp: new Date().toISOString() });
+                if (recentActivityLog.length > MAX_RECENT_ACTIVITIES) {
+                    recentActivityLog.pop();
+                }
+                saveData();
+                renderRecentActivityFeed();
+            }
+
+
+            // --- UI ELEMENTS ---
+            const navTabs = document.querySelectorAll('.nav-tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            const casoModal = document.getElementById('caso-modal');
+            const pacienteModal = document.getElementById('paciente-modal');
+            const pacientePotencialModal = document.getElementById('paciente-potencial-modal');
+            const citaModal = document.getElementById('cita-modal');
+            const actividadModal = document.getElementById('actividad-modal');
+
+            const casoForm = document.getElementById('caso-form');
+            const pacienteForm = document.getElementById('paciente-form');
+            const pacientePotencialForm = document.getElementById('paciente-potencial-form');
+            const citaForm = document.getElementById('cita-form');
+            const actividadForm = document.getElementById('actividad-form');
+
+            const pipelineStagesContainer = document.getElementById('pipeline-stages-container');
+            const pacientesTableBody = document.getElementById('pacientes-table-body');
+            const pacientesPotencialesTableBody = document.getElementById('pacientes-potenciales-table-body');
+            const citasTableBody = document.getElementById('citas-table-body');
+            const actividadesTableBody = document.getElementById('actividades-table-body');
+            const contextMenu = document.getElementById('context-menu');
+
+            // Settings elements
+            const pipelineSettingsStagesContainer = document.getElementById('pipeline-settings-stages');
+            const newStageNameInput = document.getElementById('new-stage-name');
+            const addNewStageBtn = document.getElementById('add-new-stage-btn');
+            const appointmentTypesSettingsContainer = document.getElementById('appointment-types-settings');
+            const newAppointmentTypeNameInput = document.getElementById('new-appointment-type-name');
+            const addNewAppointmentTypeBtn = document.getElementById('add-new-appointment-type-btn');
+
+
+            // Dashboard elements
+            const dashboardActiveCasosEl = document.getElementById('dashboard-active-casos');
+            const dashboardCitasHoyEl = document.getElementById('dashboard-citas-hoy');
+            const dashboardPacientesPotencialesMesEl = document.getElementById('dashboard-pacientes-potenciales-mes');
+            const dashboardOverdueActivitiesEl = document.getElementById('dashboard-overdue-activities');
+            const recentActivityFeedEl = document.getElementById('recent-activity-feed');
+
+            // --- INITIALIZATION ---
+            loadData();
+            switchTab('dashboard'); 
+            renderAll();
+
+
+            // --- TAB NAVIGATION ---
+            navTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.dataset.tab;
+                    switchTab(tabName);
+                });
+            });
+
+            function switchTab(tabName) {
+                tabContents.forEach(content => content.classList.add('hidden'));
+                navTabs.forEach(tab => tab.classList.remove('bg-slate-700', 'text-white', 'font-semibold'));
+                
+                const activeContent = document.getElementById(`${tabName}-view`);
+                const activeTab = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
+
+                if (activeContent) activeContent.classList.remove('hidden');
+                if (activeTab) activeTab.classList.add('bg-slate-700', 'text-white', 'font-semibold');
+                
+                if (tabName === 'casos') renderCasosPipeline();
+                else if (tabName === 'pacientes') renderPacientesList();
+                else if (tabName === 'pacientesPotenciales') renderPacientesPotencialesList();
+                else if (tabName === 'citas') renderCitasList();
+                else if (tabName === 'actividades') renderActividadesList();
+                else if (tabName === 'configuracion') {
+                    renderPipelineSettings();
+                    renderAppointmentTypeSettings();
+                }
+                else if (tabName === 'dashboard') renderDashboard();
+            }
+
+            // --- RENDERING FUNCTIONS ---
+            function renderAll() {
+                renderCasosPipeline();
+                renderPacientesList();
+                renderPacientesPotencialesList();
+                renderCitasList();
+                renderActividadesList();
+                renderPipelineSettings();
+                renderAppointmentTypeSettings();
+                populateCasoModalDropdowns();
+                populateActividadModalDropdowns();
+                populateCitaModalDropdowns();
+                renderDashboard();
+                renderRecentActivityFeed();
+            }
+
+            function renderRecentActivityFeed() {
+                recentActivityFeedEl.innerHTML = '';
+                if (recentActivityLog.length === 0) {
+                    recentActivityFeedEl.innerHTML = '<li class="text-gray-600">No hay actividad reciente.</li>';
+                    return;
+                }
+                recentActivityLog.forEach(activity => {
+                    const li = document.createElement('li');
+                    li.className = 'p-2 border-b border-gray-200 text-sm';
+                    const timeAgo = formatTimeAgo(new Date(activity.timestamp));
+                    li.innerHTML = `<span class="text-gray-800">${activity.message}</span> <span class="text-gray-500 text-xs float-right">${timeAgo}</span>`;
+                    recentActivityFeedEl.appendChild(li);
+                });
+            }
+            
+            function formatTimeAgo(date) {
+                const seconds = Math.floor((new Date() - date) / 1000);
+                let interval = Math.floor(seconds / 31536000);
+                if (interval > 1) return interval + " años atrás";
+                interval = Math.floor(seconds / 2592000);
+                if (interval > 1) return interval + " meses atrás";
+                interval = Math.floor(seconds / 86400);
+                if (interval > 1) return interval + " días atrás";
+                interval = Math.floor(seconds / 3600);
+                if (interval > 1) return interval + " horas atrás";
+                interval = Math.floor(seconds / 60);
+                if (interval > 1) return interval + " minutos atrás";
+                return Math.floor(seconds) + " segundos atrás";
+            }
+
+
+            function renderDashboard() {
+                const activeCasos = casos.filter(c => c.etapa !== 'Completado' && c.etapa !== 'Cerrado/Perdido');
+                dashboardActiveCasosEl.textContent = activeCasos.length;
+
+                const today = new Date().toISOString().slice(0,10);
+                const citasHoy = citas.filter(c => c.fechaHora.startsWith(today)).length;
+                dashboardCitasHoyEl.textContent = citasHoy;
+                
+                const now = new Date();
+                const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                const pacientesPotencialesMes = pacientesPotenciales.filter(pp => new Date(pp.createdAt || 0) >= firstDayOfMonth).length;
+                dashboardPacientesPotencialesMesEl.textContent = pacientesPotencialesMes;
+
+                const overdueActivities = actividades.filter(activity => !activity.completada && new Date(activity.fechaLimite) < new Date()).length;
+                dashboardOverdueActivitiesEl.textContent = overdueActivities;
+                renderRecentActivityFeed();
+            }
+
+
+            function renderCasosPipeline() {
+                pipelineStagesContainer.innerHTML = ''; 
+                etapasCasos.forEach(etapaNombre => {
+                    const stageDiv = document.createElement('div');
+                    stageDiv.className = 'pipeline-stage bg-gray-200 p-3 rounded-lg shadow w-72 flex-shrink-0';
+                    stageDiv.dataset.etapaNombre = etapaNombre; 
+
+                    const stageHeader = document.createElement('h3');
+                    stageHeader.className = 'text-lg font-semibold text-gray-700 mb-3 capitalize';
+                    stageHeader.textContent = etapaNombre;
+                    stageDiv.appendChild(stageHeader);
+
+                    const casosInStage = casos.filter(caso => caso.etapa === etapaNombre);
+                    casosInStage.forEach(caso => {
+                        const casoCard = document.createElement('div');
+                        casoCard.className = 'bg-white p-3 rounded shadow mb-2 draggable-item'; 
+                        casoCard.draggable = true;
+                        casoCard.dataset.casoId = caso.id;
+                        const pacienteAsociado = pacientes.find(p => p.id === caso.pacienteId);
+                        const nombrePacienteCaso = pacienteAsociado ? `${pacienteAsociado.nombrePila || ''} ${pacienteAsociado.primerApellido || ''}`.trim() : 'N/A';
+                        casoCard.innerHTML = `
+                            <h4 class="font-semibold text-sm text-blue-600">${caso.nombre}</h4>
+                            <p class="text-xs text-gray-600">Paciente: ${nombrePacienteCaso}</p>
+                            <p class="text-xs text-gray-800 font-medium mt-1">₡${parseFloat(caso.valor || 0).toLocaleString('es-ES')}</p>
+                            ${caso.fechaCierreEsperada ? `<p class="text-xs text-gray-500 mt-1">Cierre Esp.: ${new Date(caso.fechaCierreEsperada).toLocaleDateString('es-ES')}</p>` : ''}
+                        `;
+                        casoCard.addEventListener('contextmenu', (e) => {
+                            e.preventDefault();
+                            showContextMenu(e.pageX, e.pageY, [
+                                { label: 'Editar Caso', action: () => openCasoModal(caso.id) },
+                                { label: 'Eliminar Caso', action: () => deleteCaso(caso.id) },
+                                { label: 'Añadir Actividad al Caso', action: () => openActividadModal(null, 'caso', caso.id)}
+                            ]);
+                        });
+                        stageDiv.appendChild(casoCard);
+                    });
+                    pipelineStagesContainer.appendChild(stageDiv);
+                });
+                addDragAndDropListeners();
+            }
+            
+            function addDragAndDropListeners() {
+                const draggableItems = document.querySelectorAll('.draggable-item'); 
+                const stages = document.querySelectorAll('.pipeline-stage');
+
+                draggableItems.forEach(card => {
+                    card.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', card.dataset.casoId); 
+                        card.classList.add('opacity-50');
+                    });
+                    card.addEventListener('dragend', () => {
+                        card.classList.remove('opacity-50');
+                    });
+                });
+
+                stages.forEach(stage => {
+                    stage.addEventListener('dragover', (e) => {
+                        e.preventDefault(); 
+                        stage.classList.add('bg-gray-300'); 
+                    });
+                    stage.addEventListener('dragleave', () => {
+                        stage.classList.remove('bg-gray-300');
+                    });
+                    stage.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        stage.classList.remove('bg-gray-300');
+                        const casoId = e.dataTransfer.getData('text/plain');
+                        const newEtapaNombre = stage.dataset.etapaNombre;
+                        const caso = casos.find(c => c.id === casoId);
+                        if (caso) {
+                            const oldEtapa = caso.etapa;
+                            caso.etapa = newEtapaNombre;
+                            addRecentActivity(`Movido caso "${caso.nombre}" de ${oldEtapa} a ${newEtapaNombre}.`);
+                            saveData();
+                            renderCasosPipeline(); 
+                            renderDashboard();
+                        }
+                    });
+                });
+            }
+
+
+            function renderPacientesList() {
+                pacientesTableBody.innerHTML = '';
+                pacientes.forEach(paciente => {
+                    const row = pacientesTableBody.insertRow();
+                    const nombreCompleto = `${paciente.nombrePila || ''} ${paciente.primerApellido || ''} ${paciente.segundoApellido || ''}`.trim();
+                    row.innerHTML = `
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${nombreCompleto}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${paciente.email || 'N/A'}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${(paciente.telefonoPrefijo || '') + (paciente.telefonoNumero || '') || 'N/A'}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${paciente.fechaNacimiento ? new Date(paciente.fechaNacimiento + 'T00:00:00').toLocaleDateString('es-ES') : 'N/A'}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">
+                            <button class="text-blue-600 hover:text-blue-800 mr-2" onclick="editPaciente('${paciente.id}')" title="Editar Paciente"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-800 mr-2" onclick="deletePaciente('${paciente.id}')" title="Eliminar Paciente"><i class="fas fa-trash"></i></button>
+                            <button class="text-green-600 hover:text-green-800 mr-2" title="Añadir Actividad" onclick="openActividadModal(null, 'paciente', '${paciente.id}')"><i class="fas fa-plus-circle"></i></button>
+                            <button class="text-teal-500 hover:text-teal-700" title="Agendar Cita" onclick="openCitaModal(null, '${paciente.id}')"><i class="fas fa-calendar-plus"></i></button>
+                        </td>
+                    `;
+                });
+            }
+
+            function renderPacientesPotencialesList() {
+                pacientesPotencialesTableBody.innerHTML = '';
+                pacientesPotenciales.forEach(pp => { 
+                    const row = pacientesPotencialesTableBody.insertRow();
+                    row.innerHTML = `
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${pp.nombre}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${pp.email || 'N/A'}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${pp.telefono || 'N/A'}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${pp.origen || 'N/A'}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">
+                            <span class="px-2 py-1 font-semibold leading-tight text-xs rounded-full ${getLeadStatusClass(pp.estado)}">
+                                ${pp.estado}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">
+                            <button class="text-blue-600 hover:text-blue-800 mr-2" onclick="editPacientePotencial('${pp.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-800 mr-2" onclick="deletePacientePotencial('${pp.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            <button class="text-green-600 hover:text-green-800 mr-2" onclick="convertirPacientePotencial('${pp.id}')" title="Convertir a Paciente/Caso"><i class="fas fa-exchange-alt"></i></button>
+                             <button class="text-yellow-500 hover:text-yellow-700" title="Añadir Actividad" onclick="openActividadModal(null, 'pacientePotencial', '${pp.id}')"><i class="fas fa-plus-circle"></i></button>
+                        </td>
+                    `;
+                });
+            }
+            
+             function renderCitasList() {
+                citasTableBody.innerHTML = '';
+                const filterDate = document.getElementById('filter-cita-fecha').value;
+
+                let filteredCitas = citas;
+                if (filterDate) {
+                    filteredCitas = citas.filter(cita => cita.fechaHora.startsWith(filterDate));
+                }
+
+                filteredCitas.sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora));
+
+                filteredCitas.forEach(cita => {
+                    const row = citasTableBody.insertRow();
+                    const paciente = pacientes.find(p => p.id === cita.pacienteId);
+                    const fechaHora = new Date(cita.fechaHora);
+                    const nombreCompletoPaciente = paciente ? `${paciente.nombrePila || ''} ${paciente.primerApellido || ''} ${paciente.segundoApellido || ''}`.trim() : 'N/A';
+
+
+                    row.innerHTML = `
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${fechaHora.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${nombreCompletoPaciente}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${cita.tipo}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">
+                            <span class="px-2 py-1 font-semibold leading-tight text-xs rounded-full ${getCitaStatusClass(cita.estado)}">
+                                ${cita.estado}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">
+                            <button class="text-blue-600 hover:text-blue-800 mr-2" onclick="editCita('${cita.id}')" title="Editar Cita"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-800 mr-2" onclick="deleteCita('${cita.id}')" title="Eliminar Cita"><i class="fas fa-trash"></i></button>
+                            <button class="text-yellow-500 hover:text-yellow-700" title="Añadir Actividad" onclick="openActividadModal(null, 'cita', '${cita.id}')"><i class="fas fa-plus-circle"></i></button>
+                        </td>
+                    `;
+                });
+            }
+            document.getElementById('filter-cita-fecha').addEventListener('change', renderCitasList);
+
+
+            function getLeadStatusClass(status) { 
+                switch (status) {
+                    case 'Nuevo': return 'bg-blue-200 text-blue-900';
+                    case 'Contactado': return 'bg-yellow-200 text-yellow-900';
+                    case 'Calificado': return 'bg-green-200 text-green-900';
+                    case 'No Calificado': return 'bg-red-200 text-red-900';
+                    default: return 'bg-gray-200 text-gray-900';
+                }
+            }
+            function getCitaStatusClass(status) {
+                switch (status) {
+                    case 'Programada': return 'bg-blue-200 text-blue-900';
+                    case 'Confirmada': return 'bg-yellow-200 text-yellow-900';
+                    case 'Completada': return 'bg-green-200 text-green-900';
+                    case 'Cancelada': return 'bg-red-200 text-red-900';
+                    case 'No Asistió': return 'bg-gray-300 text-gray-700';
+                    default: return 'bg-gray-200 text-gray-900';
+                }
+            }
+
+
+            function renderActividadesList() {
+                actividadesTableBody.innerHTML = '';
+                const filterStatus = document.getElementById('filter-actividad-status').value;
+
+                let filteredActividades = actividades;
+                if (filterStatus !== 'all') {
+                    const now = new Date();
+                    filteredActividades = actividades.filter(activity => {
+                        if (filterStatus === 'completed') return activity.completada;
+                        if (filterStatus === 'pending') return !activity.completada && new Date(activity.fechaLimite) >= now;
+                        if (filterStatus === 'overdue') return !activity.completada && new Date(activity.fechaLimite) < now;
+                        return true;
+                    });
+                }
+
+
+                filteredActividades.sort((a, b) => new Date(a.fechaLimite) - new Date(b.fechaLimite)); 
+
+                filteredActividades.forEach(actividad => {
+                    const row = actividadesTableBody.insertRow();
+                    const fechaLimite = new Date(actividad.fechaLimite);
+                    const isOverdue = !actividad.completada && fechaLimite < new Date();
+                    
+                    let relatedToText = 'Ninguno';
+                    if (actividad.relacionadoCon && actividad.relacionadoId) {
+                        let item;
+                        let itemName = 'N/A';
+                        if (actividad.relacionadoCon === 'caso') {
+                            item = casos.find(d => d.id === actividad.relacionadoId);
+                            if(item) itemName = item.nombre;
+                        } else if (actividad.relacionadoCon === 'paciente') {
+                            item = pacientes.find(c => c.id === actividad.relacionadoId);
+                            if(item) itemName = `${item.nombrePila || ''} ${item.primerApellido || ''}`.trim();
+                        } else if (actividad.relacionadoCon === 'pacientePotencial') {
+                            item = pacientesPotenciales.find(l => l.id === actividad.relacionadoId);
+                            if(item) itemName = item.nombre;
+                        } else if (actividad.relacionadoCon === 'cita') {
+                            item = citas.find(ci => ci.id === actividad.relacionadoId);
+                            if (item) {
+                                const pacienteCita = pacientes.find(p => p.id === item.pacienteId);
+                                itemName = `Cita: ${pacienteCita ? (pacienteCita.nombrePila + ' ' + pacienteCita.primerApellido).trim() : 'N/A'} - ${new Date(item.fechaHora).toLocaleDateString('es-ES')}`;
+                            }
+                        }
+                        relatedToText = item ? `${actividad.relacionadoCon.charAt(0).toUpperCase() + actividad.relacionadoCon.slice(1)}: ${itemName}` : 'N/A';
+                    }
+
+
+                    row.innerHTML = `
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${actividad.tipo}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${actividad.asunto}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm ${isOverdue ? 'text-red-600 font-semibold' : ''}">${fechaLimite.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${relatedToText}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">
+                            <span class="px-2 py-1 font-semibold leading-tight text-xs rounded-full ${actividad.completada ? 'bg-green-200 text-green-900' : (isOverdue ? 'bg-red-200 text-red-900' : 'bg-yellow-200 text-yellow-900')}">
+                                ${actividad.completada ? 'Completada' : (isOverdue ? 'Vencida' : 'Pendiente')}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">
+                            <button class="text-blue-600 hover:text-blue-800 mr-2" onclick="editActividad('${actividad.id}')" title="Editar Actividad"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-600 hover:text-red-800 mr-2" onclick="deleteActividad('${actividad.id}')" title="Eliminar Actividad"><i class="fas fa-trash"></i></button>
+                            ${!actividad.completada ? `<button class="text-green-600 hover:text-green-800" onclick="toggleActividadComplete('${actividad.id}')" title="Marcar Completada"><i class="fas fa-check-circle"></i></button>` : `<button class="text-yellow-500 hover:text-yellow-700" onclick="toggleActividadComplete('${actividad.id}')" title="Marcar Pendiente"><i class="fas fa-undo"></i></button>`}
+                        </td>
+                    `;
+                });
+            }
+            
+            document.getElementById('filter-actividad-status').addEventListener('change', renderActividadesList);
+
+
+            // --- MODAL HANDLING ---
+            function openModal(modalElement) {
+                modalElement.classList.remove('hidden');
+                document.body.classList.add('modal-active');
+            }
+
+            function closeModal(modalElement) {
+                modalElement.classList.add('hidden');
+                document.body.classList.remove('modal-active');
+            }
+
+            document.querySelectorAll('.modal-close, .modal-overlay, .modal-close-btn').forEach(el => {
+                el.addEventListener('click', () => {
+                    closeModal(el.closest('.modal'));
+                });
+            });
+
+            // Caso Modal
+            document.getElementById('add-caso-btn').addEventListener('click', () => openCasoModal());
+
+            function openCasoModal(casoId = null) {
+                casoForm.reset();
+                document.getElementById('caso-id').value = '';
+                populateCasoModalDropdowns(); 
+
+                if (casoId) {
+                    const caso = casos.find(c => c.id === casoId);
+                    if (caso) {
+                        document.getElementById('caso-modal-title').textContent = 'Editar Caso';
+                        document.getElementById('caso-id').value = caso.id;
+                        document.getElementById('caso-nombre').value = caso.nombre;
+                        document.getElementById('caso-etapa').value = caso.etapa;
+                        document.getElementById('caso-valor').value = caso.valor || '';
+                        document.getElementById('caso-paciente-select').value = caso.pacienteId || '';
+                        document.getElementById('caso-fecha-cierre-esperada').value = caso.fechaCierreEsperada || '';
+                        document.getElementById('caso-notas').value = caso.notas || '';
+                    }
+                } else {
+                    document.getElementById('caso-modal-title').textContent = 'Añadir Caso';
+                    document.getElementById('caso-etapa').value = etapasCasos[0] || ''; 
+                }
+                openModal(casoModal);
+            }
+
+            casoForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('caso-id').value;
+                const casoData = {
+                    id: id || generateId(),
+                    nombre: document.getElementById('caso-nombre').value,
+                    etapa: document.getElementById('caso-etapa').value,
+                    valor: parseFloat(document.getElementById('caso-valor').value) || 0,
+                    pacienteId: document.getElementById('caso-paciente-select').value,
+                    fechaCierreEsperada: document.getElementById('caso-fecha-cierre-esperada').value,
+                    notas: document.getElementById('caso-notas').value
+                };
+
+                if (id) { 
+                    const index = casos.findIndex(c => c.id === id);
+                    if (index > -1) casos[index] = casoData;
+                    addRecentActivity(`Actualizado caso "${casoData.nombre}".`);
+                } else { 
+                    casos.push(casoData);
+                    addRecentActivity(`Añadido nuevo caso "${casoData.nombre}".`);
+                }
+                saveData();
+                renderCasosPipeline();
+                renderDashboard();
+                closeModal(casoModal);
+            });
+
+            // Paciente Modal
+            document.getElementById('add-paciente-btn').addEventListener('click', () => openPacienteModal());
+            
+            window.editPaciente = function(pacienteId) { 
+                openPacienteModal(pacienteId);
+            }
+
+            function openPacienteModal(pacienteId = null) {
+                pacienteForm.reset();
+                document.getElementById('paciente-id').value = '';
+                if (pacienteId) {
+                    const paciente = pacientes.find(p => p.id === pacienteId);
+                    if (paciente) {
+                        document.getElementById('paciente-modal-title').textContent = 'Editar Paciente';
+                        document.getElementById('paciente-id').value = paciente.id;
+                        document.getElementById('paciente-nombre-pila').value = paciente.nombrePila || '';
+                        document.getElementById('paciente-primer-apellido').value = paciente.primerApellido || '';
+                        document.getElementById('paciente-segundo-apellido').value = paciente.segundoApellido || '';
+                        document.getElementById('paciente-email').value = paciente.email || '';
+                        document.getElementById('paciente-telefono-prefijo').value = paciente.telefonoPrefijo || '+506';
+                        document.getElementById('paciente-telefono-numero').value = paciente.telefonoNumero || '';
+                        document.getElementById('paciente-fecha-nacimiento').value = paciente.fechaNacimiento || '';
+                        document.getElementById('paciente-cedula-pasaporte').value = paciente.cedulaPasaporte || '';
+                        document.getElementById('paciente-nacionalidad').value = paciente.nacionalidad || '';
+                        document.getElementById('paciente-peso').value = paciente.peso || '';
+                        document.getElementById('paciente-estatura').value = paciente.estatura || '';
+                        document.getElementById('paciente-aseguradora').value = paciente.aseguradora || '';
+                        document.getElementById('paciente-poliza').value = paciente.poliza || '';
+                        document.getElementById('paciente-medicamentos-actuales').value = paciente.medicamentosActuales || '';
+                        document.getElementById('paciente-alergias').value = paciente.alergias || '';
+                        document.getElementById('paciente-condiciones-cronicas').value = paciente.condicionesCronicas || '';
+                        document.getElementById('paciente-notas-medicas').value = paciente.notasMedicas || '';
+                    }
+                } else {
+                    document.getElementById('paciente-modal-title').textContent = 'Añadir Paciente';
+                    document.getElementById('paciente-telefono-prefijo').value = '+506'; 
+                }
+                openModal(pacienteModal);
+            }
+
+            pacienteForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('paciente-id').value;
+                const pacienteData = {
+                    id: id || generateId(),
+                    nombrePila: document.getElementById('paciente-nombre-pila').value,
+                    primerApellido: document.getElementById('paciente-primer-apellido').value,
+                    segundoApellido: document.getElementById('paciente-segundo-apellido').value,
+                    email: document.getElementById('paciente-email').value,
+                    telefonoPrefijo: document.getElementById('paciente-telefono-prefijo').value,
+                    telefonoNumero: document.getElementById('paciente-telefono-numero').value,
+                    fechaNacimiento: document.getElementById('paciente-fecha-nacimiento').value,
+                    cedulaPasaporte: document.getElementById('paciente-cedula-pasaporte').value,
+                    nacionalidad: document.getElementById('paciente-nacionalidad').value,
+                    peso: document.getElementById('paciente-peso').value,
+                    estatura: document.getElementById('paciente-estatura').value,
+                    aseguradora: document.getElementById('paciente-aseguradora').value,
+                    poliza: document.getElementById('paciente-poliza').value,
+                    medicamentosActuales: document.getElementById('paciente-medicamentos-actuales').value,
+                    alergias: document.getElementById('paciente-alergias').value,
+                    condicionesCronicas: document.getElementById('paciente-condiciones-cronicas').value,
+                    notasMedicas: document.getElementById('paciente-notas-medicas').value
+                };
+                const nombreCompletoDisplay = `${pacienteData.nombrePila} ${pacienteData.primerApellido}`.trim();
+
+                if (id) {
+                    const index = pacientes.findIndex(p => p.id === id);
+                    if (index > -1) pacientes[index] = pacienteData;
+                     addRecentActivity(`Actualizado paciente "${nombreCompletoDisplay}".`);
+                } else {
+                    pacientes.push(pacienteData);
+                    addRecentActivity(`Añadido nuevo paciente "${nombreCompletoDisplay}".`);
+                }
+                saveData();
+                renderPacientesList();
+                populateCasoModalDropdowns(); 
+                populateActividadModalDropdowns();
+                populateCitaModalDropdowns();
+                renderDashboard();
+                closeModal(pacienteModal);
+            });
+
+            // Paciente Potencial Modal
+            document.getElementById('add-paciente-potencial-btn').addEventListener('click', () => openPacientePotencialModal());
+
+            window.editPacientePotencial = function(ppId) {
+                openPacientePotencialModal(ppId);
+            }
+
+            function openPacientePotencialModal(ppId = null) {
+                pacientePotencialForm.reset();
+                document.getElementById('paciente-potencial-id').value = '';
+                if (ppId) {
+                    const pp = pacientesPotenciales.find(p => p.id === ppId);
+                    if (pp) {
+                        document.getElementById('paciente-potencial-modal-title').textContent = 'Editar Pac. Potencial';
+                        document.getElementById('paciente-potencial-id').value = pp.id;
+                        document.getElementById('paciente-potencial-nombre').value = pp.nombre;
+                        document.getElementById('paciente-potencial-email').value = pp.email || '';
+                        document.getElementById('paciente-potencial-telefono').value = pp.telefono || '';
+                        document.getElementById('paciente-potencial-origen').value = pp.origen || '';
+                        document.getElementById('paciente-potencial-estado').value = pp.estado;
+                        document.getElementById('paciente-potencial-notas').value = pp.notas || '';
+                    }
+                } else {
+                    document.getElementById('paciente-potencial-modal-title').textContent = 'Añadir Pac. Potencial';
+                    document.getElementById('paciente-potencial-estado').value = 'Nuevo'; 
+                }
+                openModal(pacientePotencialModal);
+            }
+
+            pacientePotencialForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('paciente-potencial-id').value;
+                const ppData = {
+                    id: id || generateId(),
+                    nombre: document.getElementById('potencial-nombre-pila').value + ' ' + document.getElementById('potencial-primer-apellido').value + ' ' + document.getElementById('potencial-segundo-apellido').value,
+                    email: document.getElementById('potencial-email').value,
+                    telefono: document.getElementById('potencial-prefijo-telefono').value + document.getElementById('potencial-telefono').value,
+                    origen: document.getElementById('potencial-referido-por').value,
+                    estado: document.getElementById('paciente-potencial-estado').value,
+                    notas: document.getElementById('potencial-razon-consulta').value,
+                    createdAt: id ? pacientesPotenciales.find(l=>l.id===id).createdAt : new Date().toISOString() 
+                };
+
+                if (id) {
+                    const index = pacientesPotenciales.findIndex(l => l.id === id);
+                    if (index > -1) pacientesPotenciales[index] = ppData;
+                    addRecentActivity(`Actualizado pac. potencial "${ppData.nombre}".`);
+                } else {
+                    pacientesPotenciales.push(ppData);
+                    addRecentActivity(`Añadido nuevo pac. potencial "${ppData.nombre}".`);
+                }
+                saveData();
+                renderPacientesPotencialesList();
+                populateActividadModalDropdowns();
+                renderDashboard();
+                closeModal(pacientePotencialModal);
+            });
+
+            // Cita Modal
+            document.getElementById('add-cita-btn').addEventListener('click', () => openCitaModal());
+            window.editCita = function(citaId) { openCitaModal(citaId); }
+
+            window.openCitaModal = function(citaId = null, pacienteIdPreselect = null) {
+                citaForm.reset();
+                document.getElementById('cita-id').value = '';
+                populateCitaModalDropdowns();
+
+                if (citaId) {
+                    const cita = citas.find(c => c.id === citaId);
+                    if (cita) {
+                        document.getElementById('cita-modal-title').textContent = 'Editar Cita';
+                        document.getElementById('cita-id').value = cita.id;
+                        document.getElementById('cita-paciente-select').value = cita.pacienteId;
+                        document.getElementById('cita-fecha-hora').value = cita.fechaHora;
+                        document.getElementById('cita-tipo').value = cita.tipo;
+                        document.getElementById('cita-estado').value = cita.estado;
+                        document.getElementById('cita-notas').value = cita.notas || '';
+                    }
+                } else {
+                    document.getElementById('cita-modal-title').textContent = 'Agendar Cita';
+                    if (pacienteIdPreselect) {
+                        document.getElementById('cita-paciente-select').value = pacienteIdPreselect;
+                    }
+                    document.getElementById('cita-estado').value = 'Programada';
+                }
+                openModal(citaModal);
+            }
+
+            citaForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('cita-id').value;
+                const citaData = {
+                    id: id || generateId(),
+                    pacienteId: document.getElementById('cita-paciente-select').value,
+                    fechaHora: document.getElementById('cita-fecha-hora').value,
+                    tipo: document.getElementById('cita-tipo').value,
+                    estado: document.getElementById('cita-estado').value,
+                    notas: document.getElementById('cita-notas').value
+                };
+
+                if (!citaData.pacienteId || !citaData.fechaHora || !citaData.tipo) {
+                    alert('Por favor, complete los campos Paciente, Fecha y Hora, y Tipo de Cita.');
+                    return;
+                }
+                const pacienteAsociado = pacientes.find(p=>p.id === citaData.pacienteId);
+                const nombrePacienteCita = pacienteAsociado ? `${pacienteAsociado.nombrePila} ${pacienteAsociado.primerApellido}`.trim() : 'N/A';
+
+
+                if (id) {
+                    const index = citas.findIndex(c => c.id === id);
+                    if (index > -1) citas[index] = citaData;
+                    addRecentActivity(`Actualizada cita para ${nombrePacienteCita}.`);
+                } else {
+                    citas.push(citaData);
+                    addRecentActivity(`Agendada nueva cita para ${nombrePacienteCita}.`);
+                }
+                saveData();
+                renderCitasList();
+                populateActividadModalDropdowns();
+                renderDashboard();
+                closeModal(citaModal);
+            });
+
+
+            // Actividad Modal
+            document.getElementById('add-actividad-btn').addEventListener('click', () => openActividadModal());
+
+            window.editActividad = function(actividadId) {
+                openActividadModal(actividadId);
+            }
+            
+            window.openActividadModal = function(actividadId = null, relacionadoConTipo = null, relacionadoConId = null) {
+                actividadForm.reset();
+                document.getElementById('actividad-id').value = '';
+                populateActividadModalDropdowns();
+
+                if (actividadId) {
+                    const actividad = actividades.find(a => a.id === actividadId);
+                    if (actividad) {
+                        document.getElementById('actividad-modal-title').textContent = 'Editar Actividad';
+                        document.getElementById('actividad-id').value = actividad.id;
+                        document.getElementById('actividad-tipo').value = actividad.tipo;
+                        document.getElementById('actividad-asunto').value = actividad.asunto;
+                        document.getElementById('actividad-fecha-limite').value = actividad.fechaLimite;
+                        if (actividad.relacionadoCon && actividad.relacionadoId) {
+                            document.getElementById('actividad-relacionado-con').value = `${actividad.relacionadoCon}-${actividad.relacionadoId}`;
+                        }
+                        document.getElementById('actividad-notas').value = actividad.notas || '';
+                        document.getElementById('actividad-completada').checked = actividad.completada;
+                    }
+                } else {
+                    document.getElementById('actividad-modal-title').textContent = 'Añadir Actividad';
+                    if (relacionadoConTipo && relacionadoConId) {
+                        document.getElementById('actividad-relacionado-con').value = `${relacionadoConTipo}-${relacionadoConId}`;
+                    }
+                }
+                openModal(actividadModal);
+            }
+
+
+            actividadForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('actividad-id').value;
+                const relatedToValue = document.getElementById('actividad-relacionado-con').value;
+                let relacionadoCon = null;
+                let relacionadoId = null;
+
+                if (relatedToValue) {
+                    [relacionadoCon, relacionadoId] = relatedToValue.split('-');
+                }
+
+                const actividadData = {
+                    id: id || generateId(),
+                    tipo: document.getElementById('actividad-tipo').value,
+                    asunto: document.getElementById('actividad-asunto').value,
+                    fechaLimite: document.getElementById('actividad-fecha-limite').value,
+                    relacionadoCon: relacionadoCon,
+                    relacionadoId: relacionadoId,
+                    notas: document.getElementById('actividad-notas').value,
+                    completada: document.getElementById('actividad-completada').checked
+                };
+
+                if (id) {
+                    const index = actividades.findIndex(a => a.id === id);
+                    if (index > -1) actividades[index] = actividadData;
+                    addRecentActivity(`Actualizada actividad "${actividadData.asunto}".`);
+                } else {
+                    actividades.push(actividadData);
+                    addRecentActivity(`Añadida nueva actividad "${actividadData.asunto}".`);
+                }
+                saveData();
+                renderActividadesList();
+                renderDashboard();
+                closeModal(actividadModal);
+            });
+
+            // --- POPULATE MODAL DROPDOWNS ---
+            function populateCasoModalDropdowns() {
+                const etapaSelect = document.getElementById('caso-etapa');
+                etapaSelect.innerHTML = ''; 
+                etapasCasos.forEach(etapa => {
+                    const option = document.createElement('option');
+                    option.value = etapa;
+                    option.textContent = etapa;
+                    etapaSelect.appendChild(option);
+                });
+
+                const pacienteSelect = document.getElementById('caso-paciente-select');
+                const currentSelectedPacienteId = pacienteSelect.value; 
+                pacienteSelect.innerHTML = '<option value="">-- Seleccionar Paciente Existente --</option>';
+                pacientes.sort((a,b) => `${a.nombrePila} ${a.primerApellido}`.localeCompare(`${b.nombrePila} ${b.primerApellido}`, 'es')).forEach(paciente => {
+                    const option = document.createElement('option');
+                    option.value = paciente.id;
+                    option.textContent = `${paciente.nombrePila || ''} ${paciente.primerApellido || ''} ${paciente.segundoApellido || ''}`.trim();
+                    pacienteSelect.appendChild(option);
+                });
+                if (pacientes.find(p => p.id === currentSelectedPacienteId)) {
+                    pacienteSelect.value = currentSelectedPacienteId;
+                }
+            }
+            
+            function populateCitaModalDropdowns() {
+                const pacienteSelect = document.getElementById('cita-paciente-select');
+                const currentPaciente = pacienteSelect.value;
+                pacienteSelect.innerHTML = '<option value="">-- Seleccionar Paciente --</option>';
+                pacientes.sort((a,b) => `${a.nombrePila} ${a.primerApellido}`.localeCompare(`${b.nombrePila} ${b.primerApellido}`, 'es')).forEach(paciente => {
+                    const option = document.createElement('option');
+                    option.value = paciente.id;
+                    option.textContent = `${paciente.nombrePila || ''} ${paciente.primerApellido || ''} ${paciente.segundoApellido || ''}`.trim();
+                    pacienteSelect.appendChild(option);
+                });
+                 if (pacientes.find(p => p.id === currentPaciente)) {
+                    pacienteSelect.value = currentPaciente;
+                }
+
+                const tipoCitaSelect = document.getElementById('cita-tipo');
+                const currentTipo = tipoCitaSelect.value;
+                tipoCitaSelect.innerHTML = '';
+                tiposCitas.forEach(tipo => {
+                    const option = document.createElement('option');
+                    option.value = tipo;
+                    option.textContent = tipo;
+                    tipoCitaSelect.appendChild(option);
+                });
+                if (tiposCitas.includes(currentTipo)) {
+                    tipoCitaSelect.value = currentTipo;
+                } else if (tiposCitas.length > 0) {
+                    tipoCitaSelect.value = tiposCitas[0]; 
+                }
+            }
+
+
+            function populateActividadModalDropdowns() {
+                const relatedToSelect = document.getElementById('actividad-relacionado-con');
+                const currentSelected = relatedToSelect.value;
+                relatedToSelect.innerHTML = '<option value="">-- Ninguno --</option>';
+
+                const casosGroup = document.createElement('optgroup');
+                casosGroup.label = 'Casos';
+                casos.sort((a,b) => a.nombre.localeCompare(b.nombre, 'es')).forEach(caso => {
+                    const option = document.createElement('option');
+                    option.value = `caso-${caso.id}`;
+                    option.textContent = caso.nombre;
+                    casosGroup.appendChild(option);
+                });
+                relatedToSelect.appendChild(casosGroup);
+
+                const pacientesGroup = document.createElement('optgroup');
+                pacientesGroup.label = 'Pacientes';
+                pacientes.sort((a,b) => `${a.nombrePila} ${a.primerApellido}`.localeCompare(`${b.nombrePila} ${b.primerApellido}`, 'es')).forEach(paciente => {
+                    const option = document.createElement('option');
+                    option.value = `paciente-${paciente.id}`;
+                    option.textContent = `${paciente.nombrePila || ''} ${paciente.primerApellido || ''} ${paciente.segundoApellido || ''}`.trim();
+                    pacientesGroup.appendChild(option);
+                });
+                relatedToSelect.appendChild(pacientesGroup);
+
+                const ppGroup = document.createElement('optgroup');
+                ppGroup.label = 'Pac. Potenciales';
+                pacientesPotenciales.sort((a,b) => a.nombre.localeCompare(b.nombre, 'es')).forEach(pp => {
+                    const option = document.createElement('option');
+                    option.value = `pacientePotencial-${pp.id}`;
+                    option.textContent = pp.nombre;
+                    ppGroup.appendChild(option);
+                });
+                relatedToSelect.appendChild(ppGroup);
+                
+                const citasGroup = document.createElement('optgroup');
+                citasGroup.label = 'Citas';
+                citas.sort((a,b) => new Date(a.fechaHora) - new Date(b.fechaHora)).forEach(cita => {
+                    const pacienteCita = pacientes.find(p => p.id === cita.pacienteId);
+                    const option = document.createElement('option');
+                    option.value = `cita-${cita.id}`;
+                    option.textContent = `${pacienteCita ? (pacienteCita.nombrePila + ' ' + pacienteCita.primerApellido).trim() : 'N/A'} - ${new Date(cita.fechaHora).toLocaleDateString('es-ES')}`;
+                    citasGroup.appendChild(option);
+                });
+                relatedToSelect.appendChild(citasGroup);
+                
+                if (Array.from(relatedToSelect.options).some(opt => opt.value === currentSelected)) {
+                    relatedToSelect.value = currentSelected;
+                }
+            }
+
+
+            // --- DELETE FUNCTIONS ---
+            window.deleteCaso = function(casoId) {
+                if (confirm('¿Está seguro de que desea eliminar este caso? También se eliminarán las actividades relacionadas.')) {
+                    const casoNombre = casos.find(d => d.id === casoId)?.nombre || 'Caso Desconocido';
+                    casos = casos.filter(d => d.id !== casoId);
+                    actividades = actividades.filter(a => !(a.relacionadoCon === 'caso' && a.relacionadoId === casoId));
+                    addRecentActivity(`Eliminado caso "${casoNombre}".`);
+                    saveData();
+                    renderCasosPipeline();
+                    renderActividadesList(); 
+                    renderDashboard();
+                }
+            }
+
+            window.deletePaciente = function(pacienteId) {
+                if (confirm('¿Está seguro de que desea eliminar este paciente? Se desvinculará de los casos y se eliminarán las actividades y citas relacionadas.')) {
+                    const pacienteObj = pacientes.find(c => c.id === pacienteId);
+                    const pacienteNombre = pacienteObj ? `${pacienteObj.nombrePila} ${pacienteObj.primerApellido}`.trim() : 'Paciente Desconocido';
+                    pacientes = pacientes.filter(c => c.id !== pacienteId);
+                    
+                    casos.forEach(caso => {
+                        if (caso.pacienteId === pacienteId) {
+                            caso.pacienteId = null; 
+                        }
+                    });
+                    citas = citas.filter(c => c.pacienteId !== pacienteId);
+                    actividades = actividades.filter(a => !(a.relacionadoCon === 'paciente' && a.relacionadoId === pacienteId));
+                    addRecentActivity(`Eliminado paciente "${pacienteNombre}".`);
+                    saveData();
+                    renderPacientesList();
+                    renderCasosPipeline(); 
+                    renderCitasList();
+                    renderActividadesList(); 
+                    populateCasoModalDropdowns();
+                    populateActividadModalDropdowns();
+                    populateCitaModalDropdowns();
+                    renderDashboard();
+                }
+            }
+            
+            window.deletePacientePotencial = function(ppId) {
+                if (confirm('¿Está seguro de que desea eliminar este paciente potencial? También se eliminarán las actividades relacionadas.')) {
+                    const ppNombre = pacientesPotenciales.find(l => l.id === ppId)?.nombre || 'Pac. Potencial Desconocido';
+                    pacientesPotenciales = pacientesPotenciales.filter(l => l.id !== ppId);
+                    actividades = actividades.filter(a => !(a.relacionadoCon === 'pacientePotencial' && a.relacionadoId === ppId));
+                    addRecentActivity(`Eliminado pac. potencial "${ppNombre}".`);
+                    saveData();
+                    renderPacientesPotencialesList();
+                    renderActividadesList();
+                    populateActividadModalDropdowns();
+                    renderDashboard();
+                }
+            }
+            
+            window.deleteCita = function(citaId) {
+                if (confirm('¿Está seguro de que desea eliminar esta cita? También se eliminarán las actividades relacionadas.')) {
+                    const citaInfo = citas.find(c => c.id === citaId);
+                    let citaDesc = 'Cita Desconocida';
+                    if (citaInfo) {
+                        const pacienteCita = pacientes.find(p => p.id === citaInfo.pacienteId);
+                        citaDesc = `Cita de ${pacienteCita ? (pacienteCita.nombrePila + ' ' + pacienteCita.primerApellido).trim() : 'N/A'} el ${new Date(citaInfo.fechaHora).toLocaleDateString('es-ES')}`;
+                    }
+                    citas = citas.filter(c => c.id !== citaId);
+                    actividades = actividades.filter(a => !(a.relacionadoCon === 'cita' && a.relacionadoId === citaId));
+                    addRecentActivity(`Eliminada ${citaDesc}.`);
+                    saveData();
+                    renderCitasList();
+                    renderActividadesList();
+                    renderDashboard();
+                }
+            }
+
+
+            window.deleteActividad = function(actividadId) {
+                if (confirm('¿Está seguro de que desea eliminar esta actividad?')) {
+                    const actividadAsunto = actividades.find(a => a.id === actividadId)?.asunto || 'Actividad Desconocida';
+                    actividades = actividades.filter(a => a.id !== actividadId);
+                    addRecentActivity(`Eliminada actividad "${actividadAsunto}".`);
+                    saveData();
+                    renderActividadesList();
+                    renderDashboard();
+                }
+            }
+            
+            window.toggleActividadComplete = function(actividadId) {
+                const actividad = actividades.find(a => a.id === actividadId);
+                if (actividad) {
+                    actividad.completada = !actividad.completada;
+                    addRecentActivity(`Marcada actividad "${actividad.asunto}" como ${actividad.completada ? 'completada' : 'pendiente'}.`);
+                    saveData();
+                    renderActividadesList();
+                    renderDashboard();
+                }
+            }
+
+            // --- PACIENTE POTENCIAL CONVERSION ---
+            window.convertirPacientePotencial = function(ppId) {
+                const pp = pacientesPotenciales.find(l => l.id === ppId);
+                if (!pp) return;
+
+                if (confirm(`¿Convertir paciente potencial "${pp.nombre}" a un nuevo Paciente y Caso?`)) {
+                    const nombrePartes = pp.nombre.split(' ');
+                    const nombrePilaPP = nombrePartes[0] || '';
+                    const primerApellidoPP = nombrePartes[1] || '';
+                    const segundoApellidoPP = nombrePartes.slice(2).join(' ') || '';
+
+
+                    const nuevoPaciente = {
+                        id: generateId(),
+                        nombrePila: nombrePilaPP,
+                        primerApellido: primerApellidoPP,
+                        segundoApellido: segundoApellidoPP,
+                        email: pp.email,
+                        telefonoNumero: pp.telefono, 
+                        telefonoPrefijo: '', 
+                        fechaNacimiento: '', 
+                        cedulaPasaporte: '',
+                        nacionalidad: '',
+                        peso: '',
+                        estatura: '',
+                        medicamentosActuales: '',
+                        aseguradora: '',
+                        poliza: '',
+                        alergias: '',
+                        condicionesCronicas: '',
+                        notasMedicas: `Convertido de pac. potencial. Origen: ${pp.origen || ''}. Notas originales: ${pp.notas || ''}`
+                    };
+                    pacientes.push(nuevoPaciente);
+
+                    const nuevoCaso = {
+                        id: generateId(),
+                        nombre: `Caso - ${pp.nombre}`, 
+                        etapa: etapasCasos[0], 
+                        valor: 0, 
+                        pacienteId: nuevoPaciente.id,
+                        fechaCierreEsperada: '',
+                        notas: `Convertido de pac. potencial. Origen: ${pp.origen || ''}`
+                    };
+                    casos.push(nuevoCaso);
+
+                    pacientesPotenciales = pacientesPotenciales.filter(l => l.id !== ppId); 
+
+                    addRecentActivity(`Convertido pac. potencial "${pp.nombre}" a paciente y caso.`);
+                    saveData();
+                    renderPacientesPotencialesList();
+                    renderPacientesList();
+                    renderCasosPipeline();
+                    populateCasoModalDropdowns();
+                    populateActividadModalDropdowns();
+                    populateCitaModalDropdowns();
+                    renderDashboard();
+                    
+                    alert(`Paciente potencial "${pp.nombre}" convertido. Se ha creado un nuevo paciente y un caso.`);
+                    openCasoModal(nuevoCaso.id); 
+                }
+            }
+
+            // --- SETTINGS ---
+            function renderPipelineSettings() {
+                pipelineSettingsStagesContainer.innerHTML = '';
+                etapasCasos.forEach((etapaNombre, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center justify-between p-2 bg-gray-100 rounded mb-1 draggable-stage-setting';
+                    div.dataset.stageIndex = index;
+                    div.draggable = true; 
+                    div.innerHTML = `
+                        <span class="stage-name-text">${etapaNombre}</span>
+                        <div>
+                            <button class="text-blue-500 hover:text-blue-700 mr-2 edit-stage-btn" data-index="${index}" title="Editar Etapa"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-500 hover:text-red-700 remove-stage-btn" data-index="${index}" title="Eliminar Etapa"><i class="fas fa-times-circle"></i></button>
+                        </div>
+                    `;
+                    pipelineSettingsStagesContainer.appendChild(div);
+                });
+
+                document.querySelectorAll('.edit-stage-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const index = parseInt(e.currentTarget.dataset.index);
+                        const currentName = etapasCasos[index];
+                        const newName = prompt(`Editar nombre de etapa:`, currentName);
+                        if (newName && newName.trim() !== '' && newName !== currentName) {
+                            casos.forEach(caso => {
+                                if (caso.etapa === etapasCasos[index]) {
+                                    caso.etapa = newName;
+                                }
+                            });
+                            etapasCasos[index] = newName.trim();
+                            addRecentActivity(`Renombrada etapa de caso de "${currentName}" a "${newName.trim()}".`);
+                            saveData();
+                            renderPipelineSettings();
+                            renderCasosPipeline(); 
+                            populateCasoModalDropdowns(); 
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.remove-stage-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const index = parseInt(e.currentTarget.dataset.index);
+                        if (etapasCasos.length <= 1) {
+                            alert("Debe tener al menos una etapa de caso.");
+                            return;
+                        }
+                        const stageToRemove = etapasCasos[index];
+                        if (confirm(`¿Está seguro de que desea eliminar la etapa "${stageToRemove}"? Los casos en esta etapa se moverán a la primera etapa.`)) {
+                            etapasCasos.splice(index, 1);
+                            const firstStage = etapasCasos[0];
+                            casos.forEach(caso => {
+                                if (caso.etapa === stageToRemove) {
+                                    caso.etapa = firstStage;
+                                }
+                            });
+                            addRecentActivity(`Eliminada etapa de caso "${stageToRemove}".`);
+                            saveData();
+                            renderPipelineSettings();
+                            renderCasosPipeline();
+                            populateCasoModalDropdowns();
+                        }
+                    });
+                });
+                
+                addStageSettingsDragAndDrop();
+            }
+            
+            function addStageSettingsDragAndDrop() {
+                const stageSettingItems = document.querySelectorAll('.draggable-stage-setting');
+                let draggedItem = null;
+
+                stageSettingItems.forEach(item => {
+                    item.addEventListener('dragstart', (e) => {
+                        draggedItem = item;
+                        setTimeout(() => item.classList.add('opacity-50'), 0);
+                         e.dataTransfer.effectAllowed = 'move'; 
+                    });
+
+                    item.addEventListener('dragend', () => {
+                        setTimeout(() => {
+                            if(draggedItem) draggedItem.classList.remove('opacity-50'); 
+                            draggedItem = null;
+                        }, 0);
+                    });
+
+                    item.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        const targetItem = e.target.closest('.draggable-stage-setting');
+                        if (targetItem && targetItem !== draggedItem) {
+                            pipelineSettingsStagesContainer.insertBefore(draggedItem, targetItem.nextSibling === draggedItem ? targetItem : targetItem.nextSibling);
+                        }
+                    });
+                });
+                
+                pipelineSettingsStagesContainer.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (draggedItem) {
+                        const newOrderElements = Array.from(pipelineSettingsStagesContainer.children);
+                        const newStageOrder = newOrderElements.map(el => el.querySelector('.stage-name-text').textContent);
+                        
+                        etapasCasos = newStageOrder;
+                        addRecentActivity("Reordenadas etapas de casos.");
+                        saveData();
+                        renderPipelineSettings(); 
+                        renderCasosPipeline();
+                        populateCasoModalDropdowns();
+                    }
+                });
+            }
+
+
+            addNewStageBtn.addEventListener('click', () => {
+                const stageName = newStageNameInput.value.trim();
+                if (stageName && !etapasCasos.includes(stageName)) {
+                    etapasCasos.push(stageName);
+                    addRecentActivity(`Añadida nueva etapa de caso "${stageName}".`);
+                    saveData();
+                    renderPipelineSettings();
+                    populateCasoModalDropdowns();
+                    newStageNameInput.value = '';
+                } else if (etapasCasos.includes(stageName)) {
+                    alert('Este nombre de etapa ya existe.');
+                } else {
+                    alert('Por favor, ingrese un nombre de etapa válido.');
+                }
+            });
+
+            function renderAppointmentTypeSettings() {
+                appointmentTypesSettingsContainer.innerHTML = '';
+                tiposCitas.forEach((tipo, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center justify-between p-2 bg-gray-100 rounded mb-1';
+                    div.innerHTML = `
+                        <span>${tipo}</span>
+                        <div>
+                            <button class="text-blue-500 hover:text-blue-700 mr-2 edit-appointment-type-btn" data-index="${index}" title="Editar Tipo"><i class="fas fa-edit"></i></button>
+                            <button class="text-red-500 hover:text-red-700 remove-appointment-type-btn" data-index="${index}" title="Eliminar Tipo"><i class="fas fa-times-circle"></i></button>
+                        </div>
+                    `;
+                    appointmentTypesSettingsContainer.appendChild(div);
+                });
+
+                document.querySelectorAll('.edit-appointment-type-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const index = parseInt(e.currentTarget.dataset.index);
+                        const currentName = tiposCitas[index];
+                        const newName = prompt(`Editar tipo de cita:`, currentName);
+                        if (newName && newName.trim() !== '' && newName !== currentName) {
+                            citas.forEach(cita => {
+                                if (cita.tipo === tiposCitas[index]) {
+                                    cita.tipo = newName.trim();
+                                }
+                            });
+                            tiposCitas[index] = newName.trim();
+                            addRecentActivity(`Renombrado tipo de cita de "${currentName}" a "${newName.trim()}".`);
+                            saveData();
+                            renderAppointmentTypeSettings();
+                            populateCitaModalDropdowns();
+                            renderCitasList();
+                        }
+                    });
+                });
+                 document.querySelectorAll('.remove-appointment-type-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const index = parseInt(e.currentTarget.dataset.index);
+                        if (tiposCitas.length <= 1) {
+                            alert("Debe tener al menos un tipo de cita.");
+                            return;
+                        }
+                        const typeToRemove = tiposCitas[index];
+                        if (confirm(`¿Está seguro de que desea eliminar el tipo de cita "${typeToRemove}"? Las citas existentes con este tipo se cambiarán al primer tipo disponible.`)) {
+                            tiposCitas.splice(index, 1);
+                            const firstType = tiposCitas[0] || 'General'; 
+                             citas.forEach(cita => {
+                                if (cita.tipo === typeToRemove) {
+                                    cita.tipo = firstType;
+                                }
+                            });
+                            addRecentActivity(`Eliminado tipo de cita "${typeToRemove}".`);
+                            saveData();
+                            renderAppointmentTypeSettings();
+                            populateCitaModalDropdowns();
+                            renderCitasList();
+                        }
+                    });
+                });
+            }
+
+            addNewAppointmentTypeBtn.addEventListener('click', () => {
+                const typeName = newAppointmentTypeNameInput.value.trim();
+                if (typeName && !tiposCitas.includes(typeName)) {
+                    tiposCitas.push(typeName);
+                    addRecentActivity(`Añadido nuevo tipo de cita "${typeName}".`);
+                    saveData();
+                    renderAppointmentTypeSettings();
+                    populateCitaModalDropdowns();
+                    newAppointmentTypeNameInput.value = '';
+                } else if (tiposCitas.includes(typeName)) {
+                    alert('Este tipo de cita ya existe.');
+                } else {
+                    alert('Por favor, ingrese un nombre de tipo de cita válido.');
+                }
+            });
+            
+            // Data Export/Import/Clear
+            document.getElementById('export-data-btn').addEventListener('click', () => {
+                const dataToExport = {
+                    casos,
+                    pacientes,
+                    pacientesPotenciales,
+                    citas,
+                    actividades,
+                    etapasCasos,
+                    tiposCitas,
+                    recentActivityLog
+                };
+                const jsonString = JSON.stringify(dataToExport, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `pipelinecrm_medico_backup_${new Date().toISOString().slice(0,10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                addRecentActivity("Exportados datos del CRM.");
+            });
+
+            document.getElementById('import-data-input').addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const importedData = JSON.parse(e.target.result);
+                            if (confirm('¿Está seguro de que desea importar estos datos? Esto sobrescribirá los datos existentes.')) {
+                                casos = importedData.casos || [];
+                                pacientes = importedData.pacientes || [];
+                                pacientesPotenciales = importedData.pacientesPotenciales || [];
+                                citas = importedData.citas || [];
+                                actividades = importedData.actividades || [];
+                                etapasCasos = importedData.etapasCasos || ['Consulta Inicial', 'Diagnóstico', 'Plan de Tratamiento', 'En Progreso', 'Seguimiento', 'Completado', 'Cerrado/Perdido'];
+                                tiposCitas = importedData.tiposCitas || ['Consulta General', 'Revisión'];
+                                recentActivityLog = importedData.recentActivityLog || [];
+                                
+                                addRecentActivity("Importados datos al CRM desde archivo.");
+                                saveData();
+                                renderAll(); 
+                                switchTab('dashboard'); 
+                                alert('¡Datos importados con éxito!');
+                            }
+                        } catch (error) {
+                            alert('Error al importar datos: Archivo JSON inválido o formato incorrecto.');
+                            console.error("Error de importación:", error);
+                        } finally {
+                             event.target.value = null; 
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+            document.getElementById('clear-all-data-btn').addEventListener('click', () => {
+                if (confirm('ADVERTENCIA: Esto eliminará TODOS los datos del CRM. Esta acción no se puede deshacer. ¿Está absolutamente seguro?')) {
+                    if (prompt('Para confirmar, escriba "BORRAR TODO" en el cuadro de abajo:') === "BORRAR TODO") {
+                        localStorage.removeItem('pipelineCrmCasos');
+                        localStorage.removeItem('pipelineCrmPacientes');
+                        localStorage.removeItem('pipelineCrmPacientesPotenciales');
+                        localStorage.removeItem('pipelineCrmCitas');
+                        localStorage.removeItem('pipelineCrmActividades');
+                        localStorage.removeItem('pipelineCrmEtapasCasos');
+                        localStorage.removeItem('pipelineCrmTiposCitas');
+                        localStorage.removeItem('pipelineCrmRecentActivityLog');
+                        
+                        casos = [];
+                        pacientes = [];
+                        pacientesPotenciales = [];
+                        citas = [];
+                        actividades = [];
+                        etapasCasos = ['Consulta Inicial', 'Diagnóstico', 'Plan de Tratamiento', 'En Progreso', 'Seguimiento', 'Completado', 'Cerrado/Perdido']; 
+                        tiposCitas = ['Consulta General', 'Revisión', 'Procedimiento Menor', 'Vacunación', 'Urgencia'];
+                        recentActivityLog = [];
+
+                        addRecentActivity("Borrados todos los datos del CRM."); 
+                        saveData(); 
+                        renderAll();
+                        switchTab('dashboard');
+                        alert('Todos los datos del CRM han sido borrados.');
+                    } else {
+                        alert('Borrado cancelado. La frase de confirmación era incorrecta.');
+                    }
+                }
+            });
+
+            // --- CONTEXT MENU ---
+            function showContextMenu(x, y, items) {
+                contextMenu.innerHTML = ''; 
+                items.forEach(item => {
+                    const menuItem = document.createElement('div');
+                    menuItem.className = 'context-menu-item';
+                    menuItem.textContent = item.label;
+                    menuItem.addEventListener('click', () => {
+                        item.action();
+                        hideContextMenu();
+                    });
+                    contextMenu.appendChild(menuItem);
+                });
+                contextMenu.style.left = `${x}px`;
+                contextMenu.style.top = `${y}px`;
+                contextMenu.classList.remove('hidden');
+
+                document.addEventListener('click', hideContextMenuOnClickOutside, { once: true });
+            }
+
+            function hideContextMenu() {
+                contextMenu.classList.add('hidden');
+            }
+
+            function hideContextMenuOnClickOutside(event) {
+                if (!contextMenu.contains(event.target)) {
+                    hideContextMenu();
+                } else {
+                     document.addEventListener('click', hideContextMenuOnClickOutside, { once: true });
+                }
+            }
+
+            // Splash Screen Login
+            const users = { admin: 'admin' }; // Default admin user
+
+            document.getElementById('add-new-user-btn').addEventListener('click', function() {
+                const username = document.getElementById('new-username').value.trim();
+                const password = document.getElementById('new-password').value.trim();
+
+                if (!username || !password) {
+                    alert('Por favor, complete ambos campos: Usuario y Contraseña.');
+                    return;
+                }
+
+                if (users[username]) {
+                    alert('El usuario ya existe.');
+                    return;
+                }
+
+                users[username] = password; // Save the new user
+
+                const userList = document.getElementById('existing-users-list');
+                const userItem = document.createElement('li');
+                userItem.className = 'flex justify-between items-center bg-gray-100 p-2 rounded';
+                userItem.innerHTML = `
+                    <span class="text-gray-700">${username}</span>
+                    <button class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline delete-user-btn">Eliminar</button>
+                `;
+
+                userItem.querySelector('.delete-user-btn').addEventListener('click', function() {
+                    delete users[username]; // Remove user from memory
+                    userItem.remove();
+                });
+
+                userList.appendChild(userItem);
+
+                document.getElementById('new-username').value = '';
+                document.getElementById('new-password').value = '';
+
+                alert('Usuario añadido exitosamente.');
+            });
+
+            document.getElementById('login-form').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value.trim();
+
+                if (users[username] && users[username] === password) {
+                    alert('Inicio de sesión exitoso.');
+                    document.getElementById('splash-screen').style.display = 'none'; // Hide splash screen
+                } else {
+                    alert('Usuario o contraseña incorrectos.');
+                }
+            });
+
+            document.addEventListener('DOMContentLoaded', function() {
+                const adminUser = document.querySelector('#existing-users-list li span.text-gray-700');
+                if (adminUser && adminUser.textContent.trim().toLowerCase() === 'admin') {
+                    adminUser.parentElement.style.display = 'none';
+                }
+            });
+        }); // End DOMContentLoaded
+    </script>
+</body>
+</html>
+<link rel="stylesheet" href="index.css">
+<script src="index.tsx" type="module"></script>
